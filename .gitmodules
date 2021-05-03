@@ -1,0 +1,3 @@
+[submodule "libs/tech-core"]
+	path = libs/tech-core
+	url = ../tech-core/
