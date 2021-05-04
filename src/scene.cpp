@@ -1,0 +1,149 @@
+#include "scene.hpp"
+#include <tech-core/camera.hpp>
+#include <tech-core/subsystem/debug.hpp>
+
+void Scene::initialize() {
+    // Initialise subsystems for rendering
+    engine.addSubsystem(Engine::Subsystem::DebugSubsystem::ID);
+
+    // Initialise the engine
+    engine.initialize("Terrain Test");
+
+    // Initialise camera
+    mainCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 100}, 0, 0);
+    debugCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 100}, 0, 0);
+
+    mainCamera->lookAt({ 0, 40, 0});
+    debugCamera->lookAt({ 0, 40, 0});
+
+    engine.setCamera(*mainCamera);
+    activeCamera = mainCamera.get();
+
+    // Populate some info
+    this->inputManager = &engine.getInputManager();
+    this->debugSubsystem = engine.getSubsystem(Engine::Subsystem::DebugSubsystem::ID);
+}
+
+void Scene::run() {
+    this->inputManager->captureMouse();
+
+    while (engine.beginFrame()) {
+        if (this->inputManager->isPressed(Engine::Key::eEscape)) {
+            break;
+        }
+
+        handleCameraMovement();
+
+        // Produce a debug grid
+        drawGrid();
+
+        engine.render();
+    }
+
+    this->inputManager->releaseMouse();
+}
+
+void Scene::drawGrid() {
+    const int32_t size = 500;
+
+    for (int32_t offset = -size; offset <= size; ++offset) {
+        uint32_t colour;
+        if (offset % 10 == 0) {
+            // Main line
+            colour = 0xFFFFFFFF;
+        } else if (offset % 2 == 0) {
+            // Subline
+            colour = 0xFF808080;
+        } else {
+            continue;
+        }
+
+        this->debugSubsystem->debugDrawLine(
+        { offset, -size, 0 },
+        { offset, +size, 0},
+            colour
+        );
+    }
+
+    for (int32_t offset = -size; offset <= size; ++offset) {
+        uint32_t colour;
+        if (offset % 10 == 0) {
+            // Main line
+            colour = 0xFFFFFFFF;
+        } else if (offset % 2 == 0) {
+            // Subline
+            colour = 0xFF808080;
+        } else {
+            continue;
+        }
+
+        this->debugSubsystem->debugDrawLine(
+                { -size,offset,  0 },
+                { +size, offset, 0},
+                colour
+        );
+    }
+}
+
+void Scene::handleCameraMovement() {
+    auto &input = *this->inputManager;
+
+    // Camera Rotation
+    const float lookSensitivity = 0.1f;
+    const float moveSensitivity = 6.0f;
+
+    auto mouseDelta = input.getMouseDelta();
+
+    activeCamera->setYaw(activeCamera->getYaw() + mouseDelta.x * lookSensitivity);
+    activeCamera->setPitch(activeCamera->getPitch() - mouseDelta.y * lookSensitivity);
+
+    // Movement
+
+    glm::vec3 forwardPlane = {
+            sin(glm::radians(activeCamera->getYaw())),
+            cos(glm::radians(activeCamera->getYaw())),
+            0
+    };
+    glm::vec3 rightPlane = {
+            cos(glm::radians(activeCamera->getYaw())),
+            -sin(glm::radians(activeCamera->getYaw())),
+            0
+    };
+
+    // Get movement input
+    glm::vec3 inputVector = {};
+    if (input.isPressed(Engine::Key::eW)) {
+        inputVector = forwardPlane;
+    } else if (input.isPressed(Engine::Key::eS)) {
+        inputVector = -forwardPlane;
+    }
+
+    if (input.isPressed(Engine::Key::eD)) {
+        inputVector += rightPlane;
+    } else if (input.isPressed(Engine::Key::eA)) {
+        inputVector += -rightPlane;
+    }
+
+    if (input.isPressed(Engine::Key::eSpace)) {
+        inputVector.z = 1;
+    }
+    if (input.isPressed(Engine::Key::eLeftControl)) {
+        inputVector.z = -1;
+    }
+
+    if (glm::length(inputVector) > 0) {
+        if (inputVector.x != 0 || inputVector.y != 0) {
+            glm::vec3 flatVec(inputVector);
+            flatVec.z = 0;
+
+            auto inputZ = inputVector.z;
+
+            inputVector = glm::normalize(flatVec) * moveSensitivity;
+            inputVector.z = inputZ * moveSensitivity;
+        } else {
+            inputVector.z *= moveSensitivity;
+        }
+
+        activeCamera->setPosition(activeCamera->getPosition() + inputVector);
+    }
+}

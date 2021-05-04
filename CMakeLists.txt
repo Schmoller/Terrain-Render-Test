@@ -7,7 +7,7 @@ set(GLSL_COMPILER glslc)
 add_subdirectory(./libs/tech-core)
 include_directories(./libs/tech-core/include ./libs/tech-core/libs/vk-mem-alloc/include ./libs/tech-core/libs/stb)
 
-add_executable(terrain_test main.cpp)
+add_executable(terrain_test src/main.cpp src/scene.cpp src/scene.hpp)
 target_link_libraries(terrain_test tech)
 
 # Shaders
