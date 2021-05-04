@@ -1,6 +1,9 @@
 #include "scene.hpp"
+#include "utils/gizmos.hpp"
+
 #include <tech-core/camera.hpp>
 #include <tech-core/subsystem/debug.hpp>
+#include <iostream>
 
 void Scene::initialize() {
     // Initialise subsystems for rendering
@@ -32,10 +35,12 @@ void Scene::run() {
             break;
         }
 
+        handleControls();
         handleCameraMovement();
 
         // Produce a debug grid
         drawGrid();
+        drawGizmos();
 
         engine.render();
     }
@@ -82,6 +87,20 @@ void Scene::drawGrid() {
                 { +size, offset, 0},
                 colour
         );
+    }
+}
+
+void Scene::handleControls() {
+    if (this->inputManager->wasPressed(Engine::Key::e1)) {
+        if (isMainCameraActive()) {
+            std::cout << "Switching to debug camera" << std::endl;
+            activeCamera = debugCamera.get();
+            engine.setCamera(*debugCamera);
+        } else {
+            std::cout << "Switching to main camera" << std::endl;
+            activeCamera = mainCamera.get();
+            engine.setCamera(*mainCamera);
+        }
     }
 }
 
@@ -146,4 +165,43 @@ void Scene::handleCameraMovement() {
 
         activeCamera->setPosition(activeCamera->getPosition() + inputVector);
     }
+}
+
+void Scene::drawGizmos() {
+    if (!isMainCameraActive()) {
+        // Draw main camera location
+        auto pos = mainCamera->getPosition();
+        glm::vec3 size{ 1, 1, 1};
+
+        debugSubsystem->debugDrawBox(
+            pos - size,
+            pos + size,
+            0xFF0000FF
+        );
+
+        debugSubsystem->debugDrawLine(
+            pos,
+            pos + mainCamera->getForward() * 3.0f,
+            0xFF0000FF
+        );
+
+        drawFrustum(debugSubsystem, *mainCamera);
+    }
+
+    // Axis gizmo
+    debugSubsystem->debugDrawLine(
+        {0, 0, 0},
+        {10, 0, 0},
+        0xFFFF0000
+    );
+    debugSubsystem->debugDrawLine(
+        {0, 0, 0},
+        {0, 10, 0},
+        0xFF00FF00
+    );
+    debugSubsystem->debugDrawLine(
+        {0, 0, 0},
+        {0, 0, 10},
+        0xFF0000FF
+    );
 }

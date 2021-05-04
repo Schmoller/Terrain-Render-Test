@@ -23,9 +23,13 @@ private:
 
     Engine::FPSCamera *activeCamera { nullptr };
 
+    bool isMainCameraActive() const { return activeCamera == mainCamera.get(); }
+
+    void handleControls();
     void handleCameraMovement();
 
     void drawGrid();
+    void drawGizmos();
 };
 
 
