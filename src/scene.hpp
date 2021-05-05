@@ -4,6 +4,8 @@
 #include <tech-core/subsystem/debug.hpp>
 #include <memory>
 
+#include "cdlod/terrain_manager.hpp"
+
 class Scene {
 public:
     void initialize();
@@ -22,6 +24,9 @@ private:
     std::unique_ptr<Engine::FPSCamera> debugCamera;
 
     Engine::FPSCamera *activeCamera { nullptr };
+
+    // Various terrain algorithms
+    Terrain::CDLOD::TerrainManager *cdlod { nullptr };
 
     bool isMainCameraActive() const { return activeCamera == mainCamera.get(); }
 

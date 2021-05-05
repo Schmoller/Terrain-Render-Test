@@ -8,6 +8,8 @@
 void Scene::initialize() {
     // Initialise subsystems for rendering
     engine.addSubsystem(Engine::Subsystem::DebugSubsystem::ID);
+    engine.addSubsystem(Terrain::CDLOD::TerrainManager::ID);
+
 
     // Initialise the engine
     engine.initialize("Terrain Test");
@@ -25,6 +27,9 @@ void Scene::initialize() {
     // Populate some info
     this->inputManager = &engine.getInputManager();
     this->debugSubsystem = engine.getSubsystem(Engine::Subsystem::DebugSubsystem::ID);
+
+    // initialize terrain algorithms
+    cdlod = engine.getSubsystem(Terrain::CDLOD::TerrainManager::ID);
 }
 
 void Scene::run() {
