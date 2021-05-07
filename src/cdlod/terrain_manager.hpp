@@ -39,6 +39,12 @@ private:
     uint32_t maxLodLevels { 11 };
     std::unique_ptr<LODTree> lodTree;
 
+    // Mesh Instance Buffer
+    float instanceBufferLoadFactor { 0.5f };
+    std::unique_ptr<Engine::Buffer> instanceBuffer;
+    uint32_t instanceBufferSize { 0 };
+    uint32_t instanceBufferCapacity { 0 };
+
     // Render state
     std::unique_ptr<_E::Pipeline> pipeline;
     vk::DescriptorSetLayout descriptorLayout;
@@ -47,6 +53,7 @@ private:
 
     void generateMesh();
     void generateLodTree();
+    void generateInstanceBuffer();
 };
 
 }

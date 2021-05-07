@@ -2,7 +2,6 @@
 #include <deque>
 #include <iostream>
 #include <tech-core/shapes/bounding_sphere.hpp>
-#include <tech-core/subsystem/debug.hpp>
 
 namespace Terrain::CDLOD {
 
@@ -64,8 +63,8 @@ LODTree::LODTree(uint32_t maxDepth, uint32_t nodeSize, const glm::vec2 &center)
     std::cout << "size: " << size.x << "," << size.y << std::endl;
 }
 
-void LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frustum) {
-    auto debug = Engine::Subsystem::DebugSubsystem::instance();
+uint32_t LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frustum, Engine::Buffer &instanceBuffer, uint32_t maxInstanceCount) {
+    instanceBufferStaging.clear();
 
     // generate the range spheres
     Engine::BoundingSphere rangeSpheres[maxDepth + 1];
@@ -84,7 +83,6 @@ void LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frustum) 
     Engine::BoundingBox rootBounds(
         offset.x, offset.y, rootData.minZ, offset.x + size.x, offset.y + size.y, rootData.maxZ
     );
-    debug->debugDrawBox(rootBounds, 0xffFF00FF);
 
     std::deque<PendingNode> toProcessNext;
     toProcessNext.push_back(
@@ -99,7 +97,6 @@ void LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frustum) 
         auto node = toProcessNext.front();
         toProcessNext.pop_front();
 
-//        debug->debugDrawBox(node.bounds, 0xff00ff00);
         // compute node bounding box
         if (!node.bounds.intersects(frustum)) {
             // if it is not visible we would have selected this node, but we are not interested in rendering it
@@ -107,22 +104,13 @@ void LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frustum) 
         }
 
         if (node.level == 0) {
-            debug->debugDrawBox(node.bounds, 0xffff0000);
-            markNodeVisible(node.id);
+            markNodeVisible(node.id, {node.bounds.xMin, node.bounds.yMin, node.bounds.zMin}, 1);
             continue;
         }
 
-        auto &sphere = rangeSpheres[node.level - 1];
-        debug->debugDrawBox(
-            { sphere.x - sphere.radius, sphere.y - sphere.radius, sphere.z - sphere.radius },
-            { sphere.x + sphere.radius, sphere.y + sphere.radius, sphere.z + sphere.radius }
-        );
-
         if (!node.bounds.intersects(rangeSpheres[node.level - 1])) {
             // we aren't in range of a more detailed level, so do not walk the children
-            debug->debugDrawBox(node.bounds, 0xffffff00);
-
-            markNodeVisible(node.id);
+            markNodeVisible(node.id, {node.bounds.xMin, node.bounds.yMin, node.bounds.zMin}, static_cast<float>(fast2Pow(node.level)));
             continue;
         }
 
@@ -136,8 +124,11 @@ void LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frustum) 
 
             // compute the child nodes bounding box
             Engine::BoundingBox childBounds;
-            childBounds.zMin = childData.minZ;
-            childBounds.zMax = childData.maxZ;
+//            childBounds.zMin = childData.minZ;
+//            childBounds.zMax = childData.maxZ;
+            // FIXME: This is just for debugging since the data in childData is uninitialized memory.
+            childBounds.zMin = 0;
+            childBounds.zMax = 0;
 
             if (isChildXMax(child)) {
 
@@ -159,20 +150,24 @@ void LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frustum) 
             if (childBounds.intersects(rangeSpheres[node.level - 1])) {
                 toProcessNext.push_back({ id, node.level - 1, childBounds });
             } else {
-                debug->debugDrawBox(childBounds, 0xff0000ff);
-                markNodeVisibleAtParentScale(id);
+                markNodeVisibleAtParentScale(id, {childBounds.xMin, childBounds.yMin, childBounds.zMin}, static_cast<float>(fast2Pow(node.level - 1)));
             }
         }
     }
 
+    return finalizeInstanceBuffer(instanceBuffer, maxInstanceCount);
 }
 
-void LODTree::markNodeVisible(uint32_t id) {
-    std::cout << "Mark " << id << std::endl;
+void LODTree::markNodeVisible(uint32_t id, const glm::vec3 &offset, float scale) {
+    instanceBufferStaging.push_back({
+        offset, scale * nodeSize, 0
+    });
 }
 
-void LODTree::markNodeVisibleAtParentScale(uint32_t id) {
-    std::cout << "Mark at parent scale " << id << std::endl;
+void LODTree::markNodeVisibleAtParentScale(uint32_t id, const glm::vec3 &offset, float scale) {
+    instanceBufferStaging.push_back({
+        offset, scale * nodeSize, 0
+    });
 }
 
 void LODTree::generateRanges() {
@@ -182,6 +177,28 @@ void LODTree::generateRanges() {
         ranges[layer] = baseRange;
         baseRange *= 2;
     }
+}
+
+uint32_t LODTree::finalizeInstanceBuffer(Engine::Buffer &instanceBuffer, uint32_t maxInstanceCount) {
+    size_t instances;
+    if (instanceBufferStaging.size() > maxInstanceCount) {
+        instances = maxInstanceCount;
+        std::cout << "WARNING: Too many terrain nodes being rendered. Wanted " << instanceBufferStaging.size() << " limit " << maxInstanceCount << std::endl;
+    } else {
+        instances = instanceBufferStaging.size();
+    }
+
+    vk::DeviceSize totalSize = instances * sizeof(MeshInstanceData);
+
+    void *mappedData;
+    instanceBuffer.map(&mappedData);
+
+    std::memcpy(mappedData, instanceBufferStaging.data(), totalSize);
+
+    instanceBuffer.unmap();
+    instanceBuffer.flushRange(0, totalSize);
+
+    return instances;
 }
 
 

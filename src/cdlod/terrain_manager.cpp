@@ -25,10 +25,12 @@ void TerrainManager::generateMesh() {
     auto totalVertices = (meshSize + 1) * (meshSize + 1);
     auto totalIndices = meshSize * meshSize * 6;
 
-    auto meshSizeFloat = static_cast<float>(meshSize + 1);
+    auto meshSizeFloat = static_cast<float>(meshSize);
 
     std::vector<Engine::Vertex> vertices(totalVertices);
     std::vector<uint16_t> indices(totalIndices);
+
+    float scale = 1 / meshSizeFloat;
 
     // produce the vertices
     for (uint32_t row = 0; row < meshSize + 1; ++row) {
@@ -36,10 +38,10 @@ void TerrainManager::generateMesh() {
             auto index = column + row * (meshSize + 1);
 
             vertices[index] = Engine::Vertex{
-                { static_cast<float>(column), static_cast<float>(row), 0.0f },
+                { static_cast<float>(column) * scale, static_cast<float>(row) * scale, 0.0f },
                 { 0, 0, 1 },
                 { 1, 1, 1, 1 },
-                { static_cast<float>(column) / meshSizeFloat, static_cast<float>(row) / meshSizeFloat }
+                { static_cast<float>(column) * scale, static_cast<float>(row) * scale }
             };
         }
     }
@@ -81,6 +83,16 @@ void TerrainManager::generateLodTree() {
     lodTree = std::make_unique<LODTree>(maxLodLevels - 1, 32, glm::vec3{0.0f, 0.0f, 0.0f});
 }
 
+void TerrainManager::generateInstanceBuffer() {
+    // Create an instance buffer which is large enough to hold the typical amount of nodes
+    instanceBufferCapacity = static_cast<uint32_t>(lodTree->getTotalNodes() * instanceBufferLoadFactor);
+
+    std::cout << "Nodes: " << lodTree->getTotalNodes() << std::endl;
+    vk::DeviceSize bufferSize = instanceBufferCapacity * sizeof(MeshInstanceData);
+
+    instanceBuffer = engine->getBufferManager().aquire(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryUsage::eCPUToGPU);
+}
+
 void TerrainManager::initialiseResources(
     vk::Device device, vk::PhysicalDevice physicalDevice, Engine::RenderEngine &engine
 ) {
@@ -102,6 +114,7 @@ void TerrainManager::initialiseResources(
 
     generateMesh();
     generateLodTree();
+    generateInstanceBuffer();
 }
 
 void TerrainManager::initialiseSwapChainResources(
@@ -158,6 +171,8 @@ void TerrainManager::initialiseSwapChainResources(
         .withGeometryType(Engine::PipelineGeometryType::Polygons)
         .withVertexAttributeDescriptions(Engine::Vertex::getAttributeDescriptions())
         .withVertexBindingDescription(Engine::Vertex::getBindingDescription())
+        .withVertexAttributeDescriptions(MeshInstanceData::getAttributeDescriptions())
+        .withVertexBindingDescription(MeshInstanceData::getBindingDescription())
         .withDescriptorSet(descriptorLayout)
         .withDescriptorSet(engine.getTextureManager().getLayout())
         .build();
@@ -165,6 +180,7 @@ void TerrainManager::initialiseSwapChainResources(
 
 void TerrainManager::cleanupResources(vk::Device device, Engine::RenderEngine &engine) {
     device.destroyDescriptorSetLayout(descriptorLayout);
+    instanceBuffer.reset();
 }
 
 void TerrainManager::cleanupSwapChainResources(vk::Device device, Engine::RenderEngine &engine) {
@@ -173,8 +189,6 @@ void TerrainManager::cleanupSwapChainResources(vk::Device device, Engine::Render
 }
 
 void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_t activeImage) {
-
-
     pipeline->bind(commandBuffer);
 
     std::array<vk::DescriptorSet, 1> globalDescriptors = {
@@ -185,7 +199,12 @@ void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_
     );
 
     terrainMesh->bind(commandBuffer);
-    commandBuffer.drawIndexed(terrainMesh->getIndexCount(), 1, 0, 0, 0);
+
+    if (instanceBufferSize > 0) {
+        vk::DeviceSize offsets = 0;
+        commandBuffer.bindVertexBuffers(1, 1, instanceBuffer->bufferArray(), &offsets);
+        commandBuffer.drawIndexed(terrainMesh->getIndexCount(), instanceBufferSize, 0, 0, 0);
+    }
 
 }
 
@@ -194,7 +213,7 @@ void TerrainManager::afterFrame(uint32_t activeImage) {
 }
 
 void TerrainManager::prepareFrame(uint32_t activeImage) {
-    lodTree->walkTree(camera->getPosition(), camera->getFrustum());
+    instanceBufferSize = lodTree->walkTree(camera->getPosition(), camera->getFrustum(), *instanceBuffer, instanceBufferCapacity);
 }
 
 }

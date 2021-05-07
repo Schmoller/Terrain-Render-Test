@@ -1,12 +1,45 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <vulkan/vulkan.hpp>
 
 namespace Terrain::CDLOD {
 
-struct MeshUniform {
-    alignas(16) glm::mat4 transform;
-    alignas(4) uint32_t textureIndex;
+struct MeshInstanceData {
+    glm::vec3 translate;
+    float scale;
+    uint32_t textureIndex;
+
+    static vk::VertexInputBindingDescription getBindingDescription() {
+        return vk::VertexInputBindingDescription(
+            1,
+            sizeof(MeshInstanceData),
+            vk::VertexInputRate::eInstance
+        );
+    }
+
+    static std::array<vk::VertexInputAttributeDescription, 3> getAttributeDescriptions() {
+        return {
+            vk::VertexInputAttributeDescription{
+                4,
+                1,
+                vk::Format::eR32G32B32Sfloat,
+                offsetof(MeshInstanceData, translate)
+            },
+            vk::VertexInputAttributeDescription{
+                5,
+                1,
+                vk::Format::eR32Sfloat,
+                offsetof(MeshInstanceData, scale)
+            },
+            vk::VertexInputAttributeDescription{
+                6,
+                1,
+                vk::Format::eR32Uint,
+                offsetof(MeshInstanceData, textureIndex)
+            }
+        };
+    }
 };
 
 struct NodeData {
