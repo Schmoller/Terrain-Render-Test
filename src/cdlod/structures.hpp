@@ -9,4 +9,9 @@ struct MeshUniform {
     alignas(4) uint32_t textureIndex;
 };
 
+struct NodeData {
+    float minZ;
+    float maxZ;
+};
+
 }

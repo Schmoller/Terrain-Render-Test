@@ -15,8 +15,8 @@ void Scene::initialize() {
     engine.initialize("Terrain Test");
 
     // Initialise camera
-    mainCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 100}, 0, 0);
-    debugCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 100}, 0, 0);
+    mainCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 20}, 0, 0);
+    debugCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 20}, 0, 0);
 
     mainCamera->lookAt({ 0, 40, 0});
     debugCamera->lookAt({ 0, 40, 0});
@@ -30,6 +30,7 @@ void Scene::initialize() {
 
     // initialize terrain algorithms
     cdlod = engine.getSubsystem(Terrain::CDLOD::TerrainManager::ID);
+    cdlod->setCamera(mainCamera.get());
 }
 
 void Scene::run() {
@@ -44,7 +45,7 @@ void Scene::run() {
         handleCameraMovement();
 
         // Produce a debug grid
-        drawGrid();
+//        drawGrid();
         drawGizmos();
 
         engine.render();
@@ -114,7 +115,8 @@ void Scene::handleCameraMovement() {
 
     // Camera Rotation
     const float lookSensitivity = 0.1f;
-    const float moveSensitivity = 6.0f;
+    const float moveSensitivity = 0.3f;
+    const float moveSensitivityDebug = 1.0f;
 
     auto mouseDelta = input.getMouseDelta();
 
@@ -156,16 +158,23 @@ void Scene::handleCameraMovement() {
     }
 
     if (glm::length(inputVector) > 0) {
+        float speed;
+        if (isMainCameraActive()) {
+            speed = moveSensitivity;
+        } else {
+            speed = moveSensitivityDebug;
+        }
+
         if (inputVector.x != 0 || inputVector.y != 0) {
             glm::vec3 flatVec(inputVector);
             flatVec.z = 0;
 
             auto inputZ = inputVector.z;
 
-            inputVector = glm::normalize(flatVec) * moveSensitivity;
-            inputVector.z = inputZ * moveSensitivity;
+            inputVector = glm::normalize(flatVec) * speed;
+            inputVector.z = inputZ * speed;
         } else {
-            inputVector.z *= moveSensitivity;
+            inputVector.z *= speed;
         }
 
         activeCamera->setPosition(activeCamera->getPosition() + inputVector);

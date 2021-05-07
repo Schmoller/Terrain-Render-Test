@@ -1,6 +1,7 @@
 #include "terrain_manager.hpp"
 #include <tech-core/vertex.hpp>
 #include <vector>
+#include <iostream>
 
 namespace Terrain::CDLOD {
 
@@ -9,6 +10,15 @@ const Engine::Subsystem::SubsystemID<TerrainManager> TerrainManager::ID;
 void TerrainManager::setMeshSize(uint32_t size) {
     meshSize = size;
     generateMesh();
+}
+
+void TerrainManager::setMaxLodLevels(uint32_t levels) {
+    maxLodLevels = levels;
+    generateLodTree();
+}
+
+void TerrainManager::setCamera(Engine::Camera *camera) {
+    this->camera = camera;
 }
 
 void TerrainManager::generateMesh() {
@@ -67,6 +77,10 @@ void TerrainManager::generateMesh() {
     terrainMesh = mesh;
 }
 
+void TerrainManager::generateLodTree() {
+    lodTree = std::make_unique<LODTree>(maxLodLevels - 1, 32, glm::vec3{0.0f, 0.0f, 0.0f});
+}
+
 void TerrainManager::initialiseResources(
     vk::Device device, vk::PhysicalDevice physicalDevice, Engine::RenderEngine &engine
 ) {
@@ -87,6 +101,7 @@ void TerrainManager::initialiseResources(
     );
 
     generateMesh();
+    generateLodTree();
 }
 
 void TerrainManager::initialiseSwapChainResources(
@@ -158,6 +173,8 @@ void TerrainManager::cleanupSwapChainResources(vk::Device device, Engine::Render
 }
 
 void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_t activeImage) {
+
+
     pipeline->bind(commandBuffer);
 
     std::array<vk::DescriptorSet, 1> globalDescriptors = {
@@ -174,6 +191,10 @@ void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_
 
 void TerrainManager::afterFrame(uint32_t activeImage) {
     Subsystem::afterFrame(activeImage);
+}
+
+void TerrainManager::prepareFrame(uint32_t activeImage) {
+    lodTree->walkTree(camera->getPosition(), camera->getFrustum());
 }
 
 }
