@@ -12,7 +12,7 @@ layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec4 inColor;
 layout(location = 3) in vec2 inTexCoord;
 
-layout(location = 4) in vec3 meshOffset;
+layout(location = 4) in vec2 meshOffset;
 layout(location = 5) in float meshScale;
 layout(location = 6) in uint meshTextureIndex;
 
@@ -25,7 +25,7 @@ vec3 lerp(vec3 start, vec3 end, float amount) {
 }
 
 void main() {
-    gl_Position = cam.proj * cam.view * vec4((inPosition * meshScale) + meshOffset, 1.0);
+    gl_Position = cam.proj * cam.view * vec4((inPosition * meshScale) + vec3(meshOffset, 0), 1.0);
     fragNormal = inNormal;
     fragTexCoord = vec3(inTexCoord, meshTextureIndex);
 

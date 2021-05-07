@@ -104,13 +104,13 @@ uint32_t LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frust
         }
 
         if (node.level == 0) {
-            markNodeVisible(node.id, {node.bounds.xMin, node.bounds.yMin, node.bounds.zMin}, 1);
+            markNodeVisible(node.id, {node.bounds.xMin, node.bounds.yMin}, 1);
             continue;
         }
 
         if (!node.bounds.intersects(rangeSpheres[node.level - 1])) {
             // we aren't in range of a more detailed level, so do not walk the children
-            markNodeVisible(node.id, {node.bounds.xMin, node.bounds.yMin, node.bounds.zMin}, static_cast<float>(fast2Pow(node.level)));
+            markNodeVisible(node.id, {node.bounds.xMin, node.bounds.yMin}, static_cast<float>(fast2Pow(node.level)));
             continue;
         }
 
@@ -150,7 +150,7 @@ uint32_t LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frust
             if (childBounds.intersects(rangeSpheres[node.level - 1])) {
                 toProcessNext.push_back({ id, node.level - 1, childBounds });
             } else {
-                markNodeVisibleAtParentScale(id, {childBounds.xMin, childBounds.yMin, childBounds.zMin}, static_cast<float>(fast2Pow(node.level - 1)));
+                markNodeVisibleAtParentScale(id, {childBounds.xMin, childBounds.yMin}, static_cast<float>(fast2Pow(node.level - 1)));
             }
         }
     }
@@ -158,13 +158,13 @@ uint32_t LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frust
     return finalizeInstanceBuffer(instanceBuffer, maxInstanceCount);
 }
 
-void LODTree::markNodeVisible(uint32_t id, const glm::vec3 &offset, float scale) {
+void LODTree::markNodeVisible(uint32_t id, const glm::vec2 &offset, float scale) {
     instanceBufferStaging.push_back({
         offset, scale * nodeSize, 0
     });
 }
 
-void LODTree::markNodeVisibleAtParentScale(uint32_t id, const glm::vec3 &offset, float scale) {
+void LODTree::markNodeVisibleAtParentScale(uint32_t id, const glm::vec2 &offset, float scale) {
     instanceBufferStaging.push_back({
         offset, scale * nodeSize, 0
     });

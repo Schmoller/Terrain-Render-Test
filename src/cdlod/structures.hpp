@@ -6,7 +6,7 @@
 namespace Terrain::CDLOD {
 
 struct MeshInstanceData {
-    glm::vec3 translate;
+    glm::vec2 translate;
     float scale;
     uint32_t textureIndex;
 
@@ -23,7 +23,7 @@ struct MeshInstanceData {
             vk::VertexInputAttributeDescription{
                 4,
                 1,
-                vk::Format::eR32G32B32Sfloat,
+                vk::Format::eR32G32Sfloat,
                 offsetof(MeshInstanceData, translate)
             },
             vk::VertexInputAttributeDescription{
