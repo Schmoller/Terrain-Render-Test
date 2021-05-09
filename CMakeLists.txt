@@ -7,7 +7,7 @@ set(GLSL_COMPILER glslc)
 add_subdirectory(./libs/tech-core)
 include_directories(./libs/tech-core/include ./libs/tech-core/libs/vk-mem-alloc/include ./libs/tech-core/libs/stb)
 
-add_executable(terrain_test src/main.cpp src/scene.cpp src/scene.hpp src/utils/gizmos.hpp src/utils/gizmos.cpp src/cdlod/terrain_manager.cpp src/cdlod/terrain_manager.hpp src/cdlod/structures.hpp src/cdlod/lod_tree.hpp src/cdlod/lod_tree.cpp)
+add_executable(terrain_test src/main.cpp src/scene.cpp src/scene.hpp src/utils/gizmos.hpp src/utils/gizmos.cpp src/cdlod/terrain_manager.cpp src/cdlod/terrain_manager.hpp src/cdlod/structures.hpp src/cdlod/lod_tree.hpp src/cdlod/lod_tree.cpp src/heightmap.cpp src/heightmap.hpp)
 target_link_libraries(terrain_test tech)
 
 # Shaders

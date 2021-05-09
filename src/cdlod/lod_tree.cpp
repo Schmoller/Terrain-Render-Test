@@ -6,15 +6,8 @@
 namespace Terrain::CDLOD {
 
 uint32_t constexpr calculateTotalNodeCount(uint32_t maxDepth) {
-    uint32_t totalCount = 0;
-    uint32_t layerNodes = 1;
-
-    for (auto layer = 0; layer <= maxDepth; ++layer) {
-        totalCount += layerNodes;
-        layerNodes *= 4;
-    }
-
-    return totalCount;
+    uint32_t shift = (maxDepth + 1) * 2;
+    return (1 << (shift + 1));
 }
 
 size_t constexpr calculateChildId(size_t id, size_t child) {
@@ -63,7 +56,9 @@ LODTree::LODTree(uint32_t maxDepth, uint32_t nodeSize, const glm::vec2 &center)
     std::cout << "size: " << size.x << "," << size.y << std::endl;
 }
 
-uint32_t LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frustum, Engine::Buffer &instanceBuffer, uint32_t maxInstanceCount) {
+uint32_t LODTree::walkTree(
+    const glm::vec3 &origin, const Engine::Frustum &frustum, Engine::Buffer &instanceBuffer, uint32_t maxInstanceCount
+) {
     instanceBufferStaging.clear();
 
     // generate the range spheres
@@ -104,13 +99,13 @@ uint32_t LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frust
         }
 
         if (node.level == 0) {
-            markNodeVisible(node.id, {node.bounds.xMin, node.bounds.yMin}, 1);
+            markNodeVisible(node.id, { node.bounds.xMin, node.bounds.yMin }, 1);
             continue;
         }
 
         if (!node.bounds.intersects(rangeSpheres[node.level - 1])) {
             // we aren't in range of a more detailed level, so do not walk the children
-            markNodeVisible(node.id, {node.bounds.xMin, node.bounds.yMin}, static_cast<float>(fast2Pow(node.level)));
+            markNodeVisible(node.id, { node.bounds.xMin, node.bounds.yMin }, static_cast<float>(fast2Pow(node.level)));
             continue;
         }
 
@@ -150,7 +145,8 @@ uint32_t LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frust
             if (childBounds.intersects(rangeSpheres[node.level - 1])) {
                 toProcessNext.push_back({ id, node.level - 1, childBounds });
             } else {
-                markNodeVisibleAtParentScale(id, {childBounds.xMin, childBounds.yMin}, static_cast<float>(fast2Pow(node.level - 1)));
+                markNodeVisibleAtParentScale(
+                    id, { childBounds.xMin, childBounds.yMin }, static_cast<float>(fast2Pow(node.level - 1)));
             }
         }
     }
@@ -159,15 +155,19 @@ uint32_t LODTree::walkTree(const glm::vec3 &origin, const Engine::Frustum &frust
 }
 
 void LODTree::markNodeVisible(uint32_t id, const glm::vec2 &offset, float scale) {
-    instanceBufferStaging.push_back({
-        offset, scale * nodeSize, 0
-    });
+    instanceBufferStaging.push_back(
+        {
+            offset, scale * nodeSize, 0
+        }
+    );
 }
 
 void LODTree::markNodeVisibleAtParentScale(uint32_t id, const glm::vec2 &offset, float scale) {
-    instanceBufferStaging.push_back({
-        offset, scale * nodeSize, 0
-    });
+    instanceBufferStaging.push_back(
+        {
+            offset, scale * nodeSize, 0
+        }
+    );
 }
 
 void LODTree::generateRanges() {
@@ -183,7 +183,8 @@ uint32_t LODTree::finalizeInstanceBuffer(Engine::Buffer &instanceBuffer, uint32_
     size_t instances;
     if (instanceBufferStaging.size() > maxInstanceCount) {
         instances = maxInstanceCount;
-        std::cout << "WARNING: Too many terrain nodes being rendered. Wanted " << instanceBufferStaging.size() << " limit " << maxInstanceCount << std::endl;
+        std::cout << "WARNING: Too many terrain nodes being rendered. Wanted " << instanceBufferStaging.size()
+            << " limit " << maxInstanceCount << std::endl;
     } else {
         instances = instanceBufferStaging.size();
     }
@@ -200,6 +201,89 @@ uint32_t LODTree::finalizeInstanceBuffer(Engine::Buffer &instanceBuffer, uint32_
 
     return instances;
 }
+
+void LODTree::computeHeights(Heightmap *heightmap, const glm::ivec2 &min, const glm::ivec2 &max) {
+    auto gridSize = fast2Pow(maxDepth);
+    auto gridSizeFloat = static_cast<float>(gridSize);
+
+    auto gridMinX = static_cast<uint32_t>((static_cast<float>(min.x) / static_cast<float>(heightmap->getWidth())) *
+        gridSizeFloat);
+    auto gridMinY = static_cast<uint32_t>((static_cast<float>(min.y) / static_cast<float>(heightmap->getHeight())) *
+        gridSizeFloat);
+    auto gridMaxX = static_cast<uint32_t>((static_cast<float>(max.x) / static_cast<float>(heightmap->getWidth())) *
+        gridSizeFloat);
+    auto gridMaxY = static_cast<uint32_t>((static_cast<float>(max.y) / static_cast<float>(heightmap->getHeight())) *
+        gridSizeFloat);
+
+    auto gridScaleWidth = 1 / gridSizeFloat * static_cast<float>(heightmap->getWidth());
+    auto gridScaleHeight = 1 / gridSizeFloat * static_cast<float>(heightmap->getHeight());
+
+    this->heightmap = heightmap;
+    doMinMax(1, maxDepth, {0, 0}, {gridSize, gridSize}, {gridMinX, gridMinY}, {gridMaxX, gridMaxY}, {gridScaleWidth, gridScaleHeight});
+}
+
+void LODTree::doMinMax(
+    uint32_t id, uint32_t level, const glm::uvec2 &min, const glm::uvec2 &max,
+    const glm::uvec2 &gridMin, const glm::uvec2 &gridMax, const glm::vec2 &scale
+) {
+    auto centerX = (min.x + max.x) / 2;
+    auto centerY = (min.y + max.y) / 2;
+
+    float minimum, maximum;
+    if (level == 0) {
+        auto left = static_cast<uint32_t>(static_cast<float>(min.x) * scale.x);
+        auto right = static_cast<uint32_t>(static_cast<float>(max.x) * scale.x);
+        auto bottom = static_cast<uint32_t>(static_cast<float>(min.y) * scale.y);
+        auto top = static_cast<uint32_t>(static_cast<float>(max.y) * scale.y);
+        heightmap->calculateMinMax(left, right, bottom, top, minimum, maximum);
+
+    } else {
+        for (uint32_t child = 0; child < 4; ++child) {
+            auto childId = calculateChildId(id, child);
+
+            glm::uvec2 childMin, childMax;
+
+            if (isChildXMax(child)) {
+                childMin.x = centerX;
+                childMax.x = max.x;
+            } else {
+                childMin.x = min.x;
+                childMax.x = centerX;
+            }
+
+            if (isChildYMax(child)) {
+                childMin.y = centerY;
+                childMax.y = max.y;
+            } else {
+                childMin.y = min.y;
+                childMax.y = centerY;
+            }
+
+            if (childId > nodes.size()) {
+                std::cerr << "Overflow! " << childId << " / " << nodes.size() << std::endl;
+                return;
+            }
+
+            if ((gridMax.x >= min.x && gridMin.x < max.x) && (gridMax.y >= min.y && gridMin.y < max.y)) {
+                doMinMax(
+                    childId, level - 1, childMin, childMax, gridMin, gridMax, scale
+                );
+            }
+
+            auto &childData = nodes[childId];
+            if (child == 0 || childData.minZ < minimum) {
+                minimum = childData.minZ;
+            }
+            if (child == 0 || childData.maxZ > maximum) {
+                maximum = childData.maxZ;
+            }
+        }
+    }
+
+    auto &data = nodes[id];
+    data.minZ = minimum;
+    data.maxZ = maximum;
+};
 
 
 }

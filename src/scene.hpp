@@ -25,6 +25,7 @@ private:
 
     Engine::FPSCamera *activeCamera { nullptr };
 
+    std::unique_ptr<Heightmap> heightmap;
     // Various terrain algorithms
     Terrain::CDLOD::TerrainManager *cdlod { nullptr };
 

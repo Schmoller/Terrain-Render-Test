@@ -3,6 +3,7 @@
 #include <tech-core/engine.hpp>
 #include <tech-core/subsystem/base.hpp>
 
+#include "../heightmap.hpp"
 #include "lod_tree.hpp"
 
 namespace Terrain::CDLOD {
@@ -13,6 +14,9 @@ public:
     static const Engine::Subsystem::SubsystemID<TerrainManager> ID;
 
     void setCamera(Engine::Camera*);
+    void setHeightmap(Heightmap&);
+
+    void invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2 &max);
 
     uint32_t getMeshSize() const { return meshSize; }
     void setMeshSize(uint32_t);
@@ -32,6 +36,7 @@ public:
 private:
     Engine::RenderEngine *engine { nullptr };
     Engine::Camera *camera { nullptr };
+    Heightmap *heightmap { nullptr };
 
     Engine::StaticMesh *terrainMesh { nullptr };
     uint32_t meshSize { 128 };

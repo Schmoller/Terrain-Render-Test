@@ -37,7 +37,7 @@ void TerrainManager::generateMesh() {
         for (uint32_t column = 0; column < meshSize + 1; ++column) {
             auto index = column + row * (meshSize + 1);
 
-            vertices[index] = Engine::Vertex{
+            vertices[index] = Engine::Vertex {
                 { static_cast<float>(column) * scale, static_cast<float>(row) * scale, 0.0f },
                 { 0, 0, 1 },
                 { 1, 1, 1, 1 },
@@ -80,7 +80,7 @@ void TerrainManager::generateMesh() {
 }
 
 void TerrainManager::generateLodTree() {
-    lodTree = std::make_unique<LODTree>(maxLodLevels - 1, 32, glm::vec3{0.0f, 0.0f, 0.0f});
+    lodTree = std::make_unique<LODTree>(maxLodLevels - 1, 32, glm::vec3 { 0.0f, 0.0f, 0.0f });
 }
 
 void TerrainManager::generateInstanceBuffer() {
@@ -90,7 +90,9 @@ void TerrainManager::generateInstanceBuffer() {
     std::cout << "Nodes: " << lodTree->getTotalNodes() << std::endl;
     vk::DeviceSize bufferSize = instanceBufferCapacity * sizeof(MeshInstanceData);
 
-    instanceBuffer = engine->getBufferManager().aquire(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryUsage::eCPUToGPU);
+    instanceBuffer = engine->getBufferManager().aquire(
+        bufferSize, vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryUsage::eCPUToGPU
+    );
 }
 
 void TerrainManager::initialiseResources(
@@ -213,7 +215,20 @@ void TerrainManager::afterFrame(uint32_t activeImage) {
 }
 
 void TerrainManager::prepareFrame(uint32_t activeImage) {
-    instanceBufferSize = lodTree->walkTree(camera->getPosition(), camera->getFrustum(), *instanceBuffer, instanceBufferCapacity);
+    instanceBufferSize = lodTree->walkTree(
+        camera->getPosition(), camera->getFrustum(), *instanceBuffer, instanceBufferCapacity
+    );
 }
+
+void TerrainManager::setHeightmap(Heightmap &heightmap) {
+    this->heightmap = &heightmap;
+    invalidateHeightmap({}, { heightmap.getWidth(), heightmap.getHeight() });
+}
+
+void TerrainManager::invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2 &max) {
+    // recalculate min and max heights within the area for each node
+    lodTree->computeHeights(heightmap, min, max);
+}
+
 
 }
