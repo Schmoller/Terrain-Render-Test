@@ -7,6 +7,12 @@ layout(binding = 0) uniform CameraUBO {
     mat4 proj;
 } cam;
 
+layout(binding = 1) uniform sampler2D terrainSampler;
+layout(push_constant) uniform TerrainUBO {
+    float heightOffset;
+    float heightScale;
+} terrain;
+
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec4 inColor;
@@ -25,7 +31,12 @@ vec3 lerp(vec3 start, vec3 end, float amount) {
 }
 
 void main() {
-    gl_Position = cam.proj * cam.view * vec4((inPosition * meshScale) + vec3(meshOffset, 0), 1.0);
+    float height = texture(terrainSampler, inTexCoord).r;
+    height = height * terrain.heightScale + terrain.heightOffset;
+
+    vec3 vertexPosition = vec3(inPosition.xy * meshScale, height);
+
+    gl_Position = cam.proj * cam.view * vec4(vertexPosition + vec3(meshOffset, 0), 1.0);
     fragNormal = inNormal;
     fragTexCoord = vec3(inTexCoord, meshTextureIndex);
 

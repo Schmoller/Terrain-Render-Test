@@ -42,6 +42,11 @@ struct MeshInstanceData {
     }
 };
 
+struct TerrainUniform {
+    alignas(4) float heightOffset;
+    alignas(4) float heightScale;
+};
+
 struct NodeData {
     float minZ;
     float maxZ;

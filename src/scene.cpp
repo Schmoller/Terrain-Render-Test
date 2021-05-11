@@ -28,8 +28,7 @@ void Scene::initialize() {
     this->inputManager = &engine.getInputManager();
     this->debugSubsystem = engine.getSubsystem(Engine::Subsystem::DebugSubsystem::ID);
 
-    // initialize height map
-    heightmap = std::make_unique<Heightmap>(4096, 4096);
+    initializeHeightmap();
 
     // initialize terrain algorithms
     cdlod = engine.getSubsystem(Terrain::CDLOD::TerrainManager::ID);
@@ -222,4 +221,8 @@ void Scene::drawGizmos() {
         {0, 0, 10},
         0xFF0000FF
     );
+}
+
+void Scene::initializeHeightmap() {
+    heightmap = std::make_unique<Heightmap>(4096, 4096, engine);
 }

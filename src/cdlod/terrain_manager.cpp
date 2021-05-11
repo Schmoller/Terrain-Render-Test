@@ -99,11 +99,18 @@ void TerrainManager::initialiseResources(
     vk::Device device, vk::PhysicalDevice physicalDevice, Engine::RenderEngine &engine
 ) {
     this->engine = &engine;
-    std::array<vk::DescriptorSetLayoutBinding, 1> bindings = {{
+    this->device = device;
+    std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {{
         { // Camera binding
             0, // binding
             vk::DescriptorType::eUniformBuffer,
             1, // count
+            vk::ShaderStageFlagBits::eVertex
+        },
+        { // Heightmap sampler binding
+            1,
+            vk::DescriptorType::eCombinedImageSampler,
+            1,
             vk::ShaderStageFlagBits::eVertex
         }
     }};
@@ -114,6 +121,13 @@ void TerrainManager::initialiseResources(
         }
     );
 
+    vk::SamplerCreateInfo samplerCreateInfo(
+        {}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear,
+        vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToEdge, vk::SamplerAddressMode::eClampToEdge
+    );
+    samplerCreateInfo.setAnisotropyEnable(VK_FALSE);
+    heightmapSampler = device.createSampler(samplerCreateInfo);
+
     generateMesh();
     generateLodTree();
     generateInstanceBuffer();
@@ -122,10 +136,15 @@ void TerrainManager::initialiseResources(
 void TerrainManager::initialiseSwapChainResources(
     vk::Device device, Engine::RenderEngine &engine, uint32_t swapChainImages
 ) {
+    this->swapChainImages = swapChainImages;
     // Descriptor pool for allocating the descriptors
-    std::array<vk::DescriptorPoolSize, 1> poolSizes = {{
+    std::array<vk::DescriptorPoolSize, 2> poolSizes = {{
         {
             vk::DescriptorType::eUniformBuffer,
+            swapChainImages
+        },
+        {
+            vk::DescriptorType::eCombinedImageSampler,
             swapChainImages
         }
     }};
@@ -152,19 +171,49 @@ void TerrainManager::initialiseSwapChainResources(
     for (uint32_t imageIndex = 0; imageIndex < swapChainImages; ++imageIndex) {
         auto cameraUbo = engine.getCameraDBI(imageIndex);
 
-        std::array<vk::WriteDescriptorSet, 1> descriptorWrites = {{
-            { // Camera UBO
-                descriptorSets[imageIndex],
-                0, // Binding
-                0, // Array element
-                1, // Count
-                vk::DescriptorType::eUniformBuffer,
-                nullptr,
-                &cameraUbo
-            }
-        }};
+        if (heightmap) {
+            vk::DescriptorImageInfo heightmapImage(
+                heightmapSampler,
+                heightmap->getImage(),
+                vk::ImageLayout::eShaderReadOnlyOptimal
+            );
 
-        device.updateDescriptorSets(descriptorWrites, {});
+            std::array<vk::WriteDescriptorSet, 2> descriptorWrites = {{
+                { // Camera UBO
+                    descriptorSets[imageIndex],
+                    0, // Binding
+                    0, // Array element
+                    1, // Count
+                    vk::DescriptorType::eUniformBuffer,
+                    nullptr,
+                    &cameraUbo
+                },
+                { // Height map sampler
+                    descriptorSets[imageIndex],
+                    1, // Binding
+                    0, // Array element
+                    1, // Count
+                    vk::DescriptorType::eCombinedImageSampler,
+                    &heightmapImage
+                }
+            }};
+
+            device.updateDescriptorSets(descriptorWrites, {});
+        } else {
+            std::array<vk::WriteDescriptorSet, 1> descriptorWrites = {{
+                { // Camera UBO
+                    descriptorSets[imageIndex],
+                    0, // Binding
+                    0, // Array element
+                    1, // Count
+                    vk::DescriptorType::eUniformBuffer,
+                    nullptr,
+                    &cameraUbo
+                }
+            }};
+
+            device.updateDescriptorSets(descriptorWrites, {});
+        }
     }
 
     pipeline = engine.createPipeline()
@@ -175,12 +224,14 @@ void TerrainManager::initialiseSwapChainResources(
         .withVertexBindingDescription(Engine::Vertex::getBindingDescription())
         .withVertexAttributeDescriptions(MeshInstanceData::getAttributeDescriptions())
         .withVertexBindingDescription(MeshInstanceData::getBindingDescription())
+        .withPushConstants<TerrainUniform>(vk::ShaderStageFlagBits::eVertex)
         .withDescriptorSet(descriptorLayout)
         .withDescriptorSet(engine.getTextureManager().getLayout())
         .build();
 }
 
 void TerrainManager::cleanupResources(vk::Device device, Engine::RenderEngine &engine) {
+    device.destroy(heightmapSampler);
     device.destroyDescriptorSetLayout(descriptorLayout);
     instanceBuffer.reset();
 }
@@ -205,6 +256,7 @@ void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_
     if (instanceBufferSize > 0) {
         vk::DeviceSize offsets = 0;
         commandBuffer.bindVertexBuffers(1, 1, instanceBuffer->bufferArray(), &offsets);
+        pipeline->push(commandBuffer, vk::ShaderStageFlagBits::eVertex, terrainUniform);
         commandBuffer.drawIndexed(terrainMesh->getIndexCount(), instanceBufferSize, 0, 0, 0);
     }
 
@@ -223,6 +275,31 @@ void TerrainManager::prepareFrame(uint32_t activeImage) {
 void TerrainManager::setHeightmap(Heightmap &heightmap) {
     this->heightmap = &heightmap;
     invalidateHeightmap({}, { heightmap.getWidth(), heightmap.getHeight() });
+
+    vk::DescriptorImageInfo heightmapImage(
+        heightmapSampler,
+        heightmap.getImage(),
+        vk::ImageLayout::eShaderReadOnlyOptimal
+    );
+
+    // Assign the heightmap image
+    for (uint32_t imageIndex = 0; imageIndex < swapChainImages; ++imageIndex) {
+        std::array<vk::WriteDescriptorSet, 1> descriptorWrites = {{
+            { // Height map sampler
+                descriptorSets[imageIndex],
+                1, // Binding
+                0, // Array element
+                1, // Count
+                vk::DescriptorType::eCombinedImageSampler,
+                &heightmapImage
+            }
+        }};
+
+        device.updateDescriptorSets(descriptorWrites, {});
+    }
+
+    terrainUniform.heightOffset = heightmap.getMinElevation();
+    terrainUniform.heightScale = heightmap.getMaxElevation() - heightmap.getMinElevation();
 }
 
 void TerrainManager::invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2 &max) {
