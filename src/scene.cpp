@@ -15,8 +15,8 @@ void Scene::initialize() {
     engine.initialize("Terrain Test");
 
     // Initialise camera
-    mainCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 20}, 0, 0);
-    debugCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 20}, 0, 0);
+    mainCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 520}, 0, 0);
+    debugCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 520}, 0, 0);
 
     mainCamera->lookAt({ 0, 40, 0});
     debugCamera->lookAt({ 0, 40, 0});

@@ -9,6 +9,8 @@ struct MeshInstanceData {
     glm::vec2 translate;
     float scale;
     uint32_t textureIndex;
+    glm::vec2 textureOffset;
+    glm::vec2 textureScale;
 
     static vk::VertexInputBindingDescription getBindingDescription() {
         return vk::VertexInputBindingDescription(
@@ -18,25 +20,37 @@ struct MeshInstanceData {
         );
     }
 
-    static std::array<vk::VertexInputAttributeDescription, 3> getAttributeDescriptions() {
+    static std::array<vk::VertexInputAttributeDescription, 5> getAttributeDescriptions() {
         return {
-            vk::VertexInputAttributeDescription{
+            vk::VertexInputAttributeDescription {
                 4,
                 1,
                 vk::Format::eR32G32Sfloat,
                 offsetof(MeshInstanceData, translate)
             },
-            vk::VertexInputAttributeDescription{
+            vk::VertexInputAttributeDescription {
                 5,
                 1,
                 vk::Format::eR32Sfloat,
                 offsetof(MeshInstanceData, scale)
             },
-            vk::VertexInputAttributeDescription{
+            vk::VertexInputAttributeDescription {
                 6,
                 1,
                 vk::Format::eR32Uint,
                 offsetof(MeshInstanceData, textureIndex)
+            },
+            vk::VertexInputAttributeDescription {
+                7,
+                1,
+                vk::Format::eR32G32Sfloat,
+                offsetof(MeshInstanceData, textureOffset)
+            },
+            vk::VertexInputAttributeDescription {
+                8,
+                1,
+                vk::Format::eR32G32Sfloat,
+                offsetof(MeshInstanceData, textureScale)
             }
         };
     }

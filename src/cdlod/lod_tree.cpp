@@ -71,6 +71,8 @@ uint32_t LODTree::walkTree(
         size_t id;
         uint32_t level;
         Engine::BoundingBox bounds;
+        glm::vec2 textureStart;
+        glm::vec2 textureEnd;
     };
 
     // start walking the tree from the top to the bottom
@@ -84,9 +86,12 @@ uint32_t LODTree::walkTree(
         {
             1,
             maxDepth,
-            rootBounds
+            rootBounds,
+            { 0, 0 },
+            { 1, 1 }
         }
     );
+
 
     while (!toProcessNext.empty()) {
         auto node = toProcessNext.front();
@@ -99,18 +104,23 @@ uint32_t LODTree::walkTree(
         }
 
         if (node.level == 0) {
-            markNodeVisible(node.id, { node.bounds.xMin, node.bounds.yMin }, 1);
+            markNodeVisible(node.id, { node.bounds.xMin, node.bounds.yMin }, 1, node.textureStart, node.textureEnd);
             continue;
         }
 
         if (!node.bounds.intersects(rangeSpheres[node.level - 1])) {
             // we aren't in range of a more detailed level, so do not walk the children
-            markNodeVisible(node.id, { node.bounds.xMin, node.bounds.yMin }, static_cast<float>(fast2Pow(node.level)));
+            markNodeVisible(
+                node.id, { node.bounds.xMin, node.bounds.yMin }, static_cast<float>(fast2Pow(node.level)),
+                node.textureStart, node.textureEnd
+            );
             continue;
         }
 
         auto centerX = (node.bounds.xMin + node.bounds.xMax) / 2.0f;
         auto centerY = (node.bounds.yMin + node.bounds.yMax) / 2.0f;
+        auto textureCenterX = (node.textureStart.x + node.textureEnd.x) / 2.0f;
+        auto textureCenterY = (node.textureStart.y + node.textureEnd.y) / 2.0f;
 
         for (uint32_t child = 0; child < 4; ++child) {
             auto id = calculateChildId(node.id, child);
@@ -119,34 +129,41 @@ uint32_t LODTree::walkTree(
 
             // compute the child nodes bounding box
             Engine::BoundingBox childBounds;
-//            childBounds.zMin = childData.minZ;
-//            childBounds.zMax = childData.maxZ;
-            // FIXME: This is just for debugging since the data in childData is uninitialized memory.
-            childBounds.zMin = 0;
-            childBounds.zMax = 0;
+            glm::vec2 childTexStart, childTexEnd;
+            childBounds.zMin = childData.minZ;
+            childBounds.zMax = childData.maxZ;
 
             if (isChildXMax(child)) {
-
                 childBounds.xMin = centerX;
                 childBounds.xMax = node.bounds.xMax;
+                childTexStart.x = textureCenterX;
+                childTexEnd.x = node.textureEnd.x;
             } else {
                 childBounds.xMin = node.bounds.xMin;
                 childBounds.xMax = centerX;
+                childTexStart.x = node.textureStart.x;
+                childTexEnd.x = textureCenterX;
             }
 
             if (isChildYMax(child)) {
                 childBounds.yMin = centerY;
                 childBounds.yMax = node.bounds.yMax;
+                childTexStart.y = textureCenterY;
+                childTexEnd.y = node.textureEnd.y;
             } else {
                 childBounds.yMin = node.bounds.yMin;
                 childBounds.yMax = centerY;
+                childTexStart.y = node.textureStart.y;
+                childTexEnd.y = textureCenterY;
             }
 
             if (childBounds.intersects(rangeSpheres[node.level - 1])) {
-                toProcessNext.push_back({ id, node.level - 1, childBounds });
+                toProcessNext.push_back({ id, node.level - 1, childBounds, childTexStart, childTexEnd });
             } else {
                 markNodeVisibleAtParentScale(
-                    id, { childBounds.xMin, childBounds.yMin }, static_cast<float>(fast2Pow(node.level - 1)));
+                    id, { childBounds.xMin, childBounds.yMin }, static_cast<float>(fast2Pow(node.level - 1)),
+                    childTexStart, childTexEnd
+                );
             }
         }
     }
@@ -154,18 +171,25 @@ uint32_t LODTree::walkTree(
     return finalizeInstanceBuffer(instanceBuffer, maxInstanceCount);
 }
 
-void LODTree::markNodeVisible(uint32_t id, const glm::vec2 &offset, float scale) {
+void LODTree::markNodeVisible(
+    uint32_t id, const glm::vec2 &offset, float scale, const glm::vec2 &textureStart, const glm::vec2 &textureEnd
+) {
+    glm::vec2 textureScale = textureEnd - textureStart;
     instanceBufferStaging.push_back(
         {
-            offset, scale * nodeSize, 0
+            offset, scale * nodeSize, 0, textureStart, textureScale
         }
     );
 }
 
-void LODTree::markNodeVisibleAtParentScale(uint32_t id, const glm::vec2 &offset, float scale) {
+void
+LODTree::markNodeVisibleAtParentScale(
+    uint32_t id, const glm::vec2 &offset, float scale, const glm::vec2 &textureStart, const glm::vec2 &textureEnd
+) {
+    glm::vec2 textureScale = textureEnd - textureStart;
     instanceBufferStaging.push_back(
         {
-            offset, scale * nodeSize, 0
+            offset, scale * nodeSize, 0, textureStart, textureScale
         }
     );
 }
@@ -219,7 +243,10 @@ void LODTree::computeHeights(Heightmap *heightmap, const glm::ivec2 &min, const 
     auto gridScaleHeight = 1 / gridSizeFloat * static_cast<float>(heightmap->getHeight());
 
     this->heightmap = heightmap;
-    doMinMax(1, maxDepth, {0, 0}, {gridSize, gridSize}, {gridMinX, gridMinY}, {gridMaxX, gridMaxY}, {gridScaleWidth, gridScaleHeight});
+    doMinMax(
+        1, maxDepth, { 0, 0 }, { gridSize, gridSize }, { gridMinX, gridMinY }, { gridMaxX, gridMaxY },
+        { gridScaleWidth, gridScaleHeight }
+    );
 }
 
 void LODTree::doMinMax(

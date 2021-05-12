@@ -21,6 +21,8 @@ layout(location = 3) in vec2 inTexCoord;
 layout(location = 4) in vec2 meshOffset;
 layout(location = 5) in float meshScale;
 layout(location = 6) in uint meshTextureIndex;
+layout(location = 7) in vec2 meshTextureOffset;
+layout(location = 8) in vec2 meshTextureScale;
 
 layout(location = 0) out vec4 fragColour;
 layout(location = 1) out vec3 fragNormal;
@@ -31,7 +33,9 @@ vec3 lerp(vec3 start, vec3 end, float amount) {
 }
 
 void main() {
-    float height = texture(terrainSampler, inTexCoord).r;
+    vec2 texCoord = vec2(inTexCoord.x * meshTextureScale.x, inTexCoord.y * meshTextureScale.y);
+    texCoord += meshTextureOffset;
+    float height = texture(terrainSampler, texCoord).r;
     height = height * terrain.heightScale + terrain.heightOffset;
 
     vec3 vertexPosition = vec3(inPosition.xy * meshScale, height);

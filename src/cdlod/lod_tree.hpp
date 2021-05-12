@@ -42,8 +42,8 @@ private:
     std::vector<MeshInstanceData> instanceBufferStaging;
 
     void generateRanges();
-    void markNodeVisible(uint32_t id, const glm::vec2 &offset, float scale);
-    void markNodeVisibleAtParentScale(uint32_t id, const glm::vec2 &offset, float scale);
+    void markNodeVisible(uint32_t id, const glm::vec2 &offset, float scale, const glm::vec2 &textureStart, const glm::vec2 &textureEnd);
+    void markNodeVisibleAtParentScale(uint32_t id, const glm::vec2 &offset, float scale, const glm::vec2 &textureStart, const glm::vec2 &textureEnd);
 
     uint32_t finalizeInstanceBuffer(Engine::Buffer &instanceBuffer, uint32_t maxInstanceCount);
 
