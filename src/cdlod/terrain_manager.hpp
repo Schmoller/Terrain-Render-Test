@@ -49,9 +49,9 @@ private:
     Heightmap *heightmap { nullptr };
 
     Engine::StaticMesh *terrainMesh { nullptr };
-    uint32_t meshSize { 128 };
+    uint32_t meshSize { 32 };
 
-    uint32_t maxLodLevels { 11 };
+    uint32_t maxLodLevels { 7 };
     std::unique_ptr<LODTree> lodTree;
 
     TerrainUniform terrainUniform;

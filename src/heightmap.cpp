@@ -1,15 +1,45 @@
 #include "heightmap.hpp"
 #include <tech-core/engine.hpp>
+#include <stb_image.h>
 
 const float HEIGHTMAP_SCALE = 65535.0f;
 
 Heightmap::Heightmap(uint32_t width, uint32_t height, Engine::RenderEngine &engine)
     : width(width), height(height) {
     bitmap.resize(width * height);
-    // DEBUG: Fill with gradient to max height
+
+    // Fill with emptiness
     for (auto i = 0; i < width * height; ++i) {
-        bitmap[i] = static_cast<uint16_t>((static_cast<float>(i % height) / static_cast<float>(width)) * 65535.0f);
+        bitmap[i] = static_cast<uint16_t>(0);
     }
+
+    bitmapImage = engine.createImage(width, height)
+        .withUsage(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)
+        .withFormat(vk::Format::eR16Unorm)
+        .withDestinationStage(vk::PipelineStageFlagBits::eVertexShader)
+        .build();
+
+    transferImage(engine);
+}
+
+Heightmap::Heightmap(const char *filename, Engine::RenderEngine &engine) {
+    int fileWidth, fileHeight, components;
+    unsigned char *pixels = stbi_load(filename, &fileWidth, &fileHeight, &components, 4);
+    if (!pixels) {
+        throw std::runtime_error("Failed to load heightmap");
+    }
+
+    uint32_t *rgbPixels = reinterpret_cast<uint32_t *>(pixels);
+
+    bitmap.resize(fileWidth * fileHeight);
+    width = fileWidth;
+    height = fileHeight;
+
+    for (auto i = 0; i < width * height; ++i) {
+        bitmap[i] = static_cast<uint16_t>(rgbPixels[i] & 0xFFFF);
+    }
+
+    stbi_image_free(pixels);
 
     bitmapImage = engine.createImage(width, height)
         .withUsage(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)

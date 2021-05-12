@@ -8,6 +8,8 @@ class Heightmap {
 public:
     Heightmap(uint32_t width, uint32_t height, Engine::RenderEngine &engine);
 
+    Heightmap(const char *filename, Engine::RenderEngine &engine);
+
     uint32_t getWidth() const { return width; }
 
     uint32_t getHeight() const { return height; }

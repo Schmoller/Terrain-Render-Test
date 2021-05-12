@@ -224,5 +224,6 @@ void Scene::drawGizmos() {
 }
 
 void Scene::initializeHeightmap() {
-    heightmap = std::make_unique<Heightmap>(4096, 4096, engine);
+    heightmap = std::make_unique<Heightmap>("assets/textures/heightmap.png", engine);
+    // heightmap = std::make_unique<Heightmap>(4096, 4096, engine);
 }

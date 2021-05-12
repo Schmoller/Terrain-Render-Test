@@ -1,3 +1,6 @@
 [submodule "libs/tech-core"]
 	path = libs/tech-core
 	url = ../tech-core/
+[submodule "libs/perlin-noise"]
+	path = libs/perlin-noise
+	url = https://github.com/Reputeless/PerlinNoise.git
