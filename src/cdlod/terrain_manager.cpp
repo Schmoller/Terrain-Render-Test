@@ -21,6 +21,10 @@ void TerrainManager::setCamera(Engine::Camera *camera) {
     this->camera = camera;
 }
 
+void TerrainManager::setWireframe(bool enable) {
+    wireframe = enable;
+}
+
 void TerrainManager::generateMesh() {
     auto totalVertices = (meshSize + 1) * (meshSize + 1);
     auto totalIndices = meshSize * meshSize * 6;
@@ -228,6 +232,20 @@ void TerrainManager::initialiseSwapChainResources(
         .withDescriptorSet(descriptorLayout)
         .withDescriptorSet(engine.getTextureManager().getLayout())
         .build();
+
+    pipelineWireframe = engine.createPipeline()
+        .withVertexShader("assets/shaders/cdlod-vert.spv")
+        .withFragmentShader("assets/shaders/cdlod-frag.spv")
+        .withGeometryType(Engine::PipelineGeometryType::Polygons)
+        .withVertexAttributeDescriptions(Engine::Vertex::getAttributeDescriptions())
+        .withVertexBindingDescription(Engine::Vertex::getBindingDescription())
+        .withVertexAttributeDescriptions(MeshInstanceData::getAttributeDescriptions())
+        .withVertexBindingDescription(MeshInstanceData::getBindingDescription())
+        .withPushConstants<TerrainUniform>(vk::ShaderStageFlagBits::eVertex)
+        .withDescriptorSet(descriptorLayout)
+        .withDescriptorSet(engine.getTextureManager().getLayout())
+        .withFillMode(Engine::FillMode::Wireframe)
+        .build();
 }
 
 void TerrainManager::cleanupResources(vk::Device device, Engine::RenderEngine &engine) {
@@ -238,16 +256,24 @@ void TerrainManager::cleanupResources(vk::Device device, Engine::RenderEngine &e
 
 void TerrainManager::cleanupSwapChainResources(vk::Device device, Engine::RenderEngine &engine) {
     pipeline.reset();
+    pipelineWireframe.reset();
     device.destroyDescriptorPool(descriptorPool);
 }
 
 void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_t activeImage) {
-    pipeline->bind(commandBuffer);
+    Engine::Pipeline *currentPipeline;
+    if (wireframe) {
+        currentPipeline = pipelineWireframe.get();
+    } else {
+        currentPipeline = pipeline.get();
+    }
+
+    currentPipeline->bind(commandBuffer);
 
     std::array<vk::DescriptorSet, 1> globalDescriptors = {
         descriptorSets[activeImage]
     };
-    pipeline->bindDescriptorSets(
+    currentPipeline->bindDescriptorSets(
         commandBuffer, 0, static_cast<uint32_t>(globalDescriptors.size()), globalDescriptors.data(), 0, nullptr
     );
 
@@ -256,7 +282,7 @@ void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_
     if (instanceBufferSize > 0) {
         vk::DeviceSize offsets = 0;
         commandBuffer.bindVertexBuffers(1, 1, instanceBuffer->bufferArray(), &offsets);
-        pipeline->push(commandBuffer, vk::ShaderStageFlagBits::eVertex, terrainUniform);
+        currentPipeline->push(commandBuffer, vk::ShaderStageFlagBits::eVertex, terrainUniform);
         commandBuffer.drawIndexed(terrainMesh->getIndexCount(), instanceBufferSize, 0, 0, 0);
     }
 

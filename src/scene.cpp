@@ -15,11 +15,11 @@ void Scene::initialize() {
     engine.initialize("Terrain Test");
 
     // Initialise camera
-    mainCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 520}, 0, 0);
-    debugCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3{ 0, 0, 520}, 0, 0);
+    mainCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3 { 0, 0, 520 }, 0, 0);
+    debugCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3 { 0, 0, 520 }, 0, 0);
 
-    mainCamera->lookAt({ 0, 40, 0});
-    debugCamera->lookAt({ 0, 40, 0});
+    mainCamera->lookAt({ 0, 40, 0 });
+    debugCamera->lookAt({ 0, 40, 0 });
 
     engine.setCamera(*mainCamera);
     activeCamera = mainCamera.get();
@@ -73,8 +73,8 @@ void Scene::drawGrid() {
         }
 
         this->debugSubsystem->debugDrawLine(
-        { offset, -size, 0 },
-        { offset, +size, 0},
+            { offset, -size, 0 },
+            { offset, +size, 0 },
             colour
         );
     }
@@ -92,9 +92,9 @@ void Scene::drawGrid() {
         }
 
         this->debugSubsystem->debugDrawLine(
-                { -size,offset,  0 },
-                { +size, offset, 0},
-                colour
+            { -size, offset, 0 },
+            { +size, offset, 0 },
+            colour
         );
     }
 }
@@ -111,6 +111,10 @@ void Scene::handleControls() {
             engine.setCamera(*mainCamera);
         }
     }
+    if (this->inputManager->wasPressed(Engine::Key::e2)) {
+        cdlod->setWireframe(!cdlod->getWireframe());
+    }
+
 }
 
 void Scene::handleCameraMovement() {
@@ -129,14 +133,14 @@ void Scene::handleCameraMovement() {
     // Movement
 
     glm::vec3 forwardPlane = {
-            sin(glm::radians(activeCamera->getYaw())),
-            cos(glm::radians(activeCamera->getYaw())),
-            0
+        sin(glm::radians(activeCamera->getYaw())),
+        cos(glm::radians(activeCamera->getYaw())),
+        0
     };
     glm::vec3 rightPlane = {
-            cos(glm::radians(activeCamera->getYaw())),
-            -sin(glm::radians(activeCamera->getYaw())),
-            0
+        cos(glm::radians(activeCamera->getYaw())),
+        -sin(glm::radians(activeCamera->getYaw())),
+        0
     };
 
     // Get movement input
@@ -188,7 +192,7 @@ void Scene::drawGizmos() {
     if (!isMainCameraActive()) {
         // Draw main camera location
         auto pos = mainCamera->getPosition();
-        glm::vec3 size{ 1, 1, 1};
+        glm::vec3 size { 1, 1, 1 };
 
         debugSubsystem->debugDrawBox(
             pos - size,
@@ -207,18 +211,18 @@ void Scene::drawGizmos() {
 
     // Axis gizmo
     debugSubsystem->debugDrawLine(
-        {0, 0, 0},
-        {10, 0, 0},
+        { 0, 0, 0 },
+        { 10, 0, 0 },
         0xFFFF0000
     );
     debugSubsystem->debugDrawLine(
-        {0, 0, 0},
-        {0, 10, 0},
+        { 0, 0, 0 },
+        { 0, 10, 0 },
         0xFF00FF00
     );
     debugSubsystem->debugDrawLine(
-        {0, 0, 0},
-        {0, 0, 10},
+        { 0, 0, 0 },
+        { 0, 0, 10 },
         0xFF0000FF
     );
 }

@@ -28,6 +28,10 @@ public:
 
     void setMaxLodLevels(uint32_t);
 
+    void setWireframe(bool);
+
+    bool getWireframe() const { return wireframe; }
+
     // For engine use
     void initialiseResources(vk::Device device, vk::PhysicalDevice physicalDevice, _E::RenderEngine &engine);
 
@@ -48,6 +52,8 @@ private:
     Engine::Camera *camera { nullptr };
     Heightmap *heightmap { nullptr };
 
+    bool wireframe { false };
+
     Engine::StaticMesh *terrainMesh { nullptr };
     uint32_t meshSize { 32 };
 
@@ -67,6 +73,7 @@ private:
     // Render state
     vk::Device device;
     std::unique_ptr<_E::Pipeline> pipeline;
+    std::unique_ptr<_E::Pipeline> pipelineWireframe;
     vk::DescriptorSetLayout descriptorLayout;
     vk::DescriptorPool descriptorPool;
     std::vector<vk::DescriptorSet> descriptorSets;
