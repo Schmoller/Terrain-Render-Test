@@ -1,4 +1,5 @@
 #pragma once
+
 #include <tech-core/shapes/bounding_box.hpp>
 #include <tech-core/shapes/frustum.hpp>
 #include <tech-core/buffer.hpp>
@@ -24,10 +25,19 @@ public:
         return nodeSize;
     }
 
-    uint32_t walkTree(const glm::vec3 &origin, const Engine::Frustum &frustum, Engine::Buffer &instanceBuffer, uint32_t maxInstanceCount);
+    uint32_t walkTree(
+        const glm::vec3 &origin, const Engine::Frustum &frustum, Engine::Buffer &instanceBuffer,
+        uint32_t maxInstanceCount
+    );
+
     void computeHeights(Heightmap *, const glm::ivec2 &min, const glm::ivec2 &max);
 
 private:
+    struct Range {
+        uint32_t range;
+        float transitionStart;
+    };
+
     Heightmap *heightmap { nullptr };
 
     uint32_t maxDepth { 0 };
@@ -37,13 +47,13 @@ private:
 
     // Morten encoded keys
     std::vector<NodeData> nodes;
-    std::vector<uint32_t> ranges;
+    std::vector<Range> ranges;
 
     std::vector<MeshInstanceData> instanceBufferStaging;
 
     void generateRanges();
-    void markNodeVisible(uint32_t id, const glm::vec2 &offset, float scale, const glm::vec2 &textureStart, const glm::vec2 &textureEnd);
-    void markNodeVisibleAtParentScale(uint32_t id, const glm::vec2 &offset, float scale, const glm::vec2 &textureStart, const glm::vec2 &textureEnd);
+
+    void markNodeVisible(const glm::vec2 &offset, float scale, const Range &rang);
 
     uint32_t finalizeInstanceBuffer(Engine::Buffer &instanceBuffer, uint32_t maxInstanceCount);
 

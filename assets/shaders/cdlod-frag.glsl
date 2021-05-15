@@ -10,6 +10,6 @@ layout(location = 2) in vec3 fragTexCoord;
 //layout(set = 3, binding = 2) uniform sampler2DArray texSampler;
 
 void main() {
-//    outColor = texture(texSampler, fragTexCoord) * fragColour;
-    outColor = vec4(fragTexCoord.xy, 0, 1);
+    //    outColor = texture(texSampler, fragTexCoord) * fragColour;
+    outColor = fragColour;
 }

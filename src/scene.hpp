@@ -12,7 +12,7 @@ public:
 
     void run();
 
-    Engine::Subsystem::DebugSubsystem *debug() { return this->debugSubsystem;  }
+    Engine::Subsystem::DebugSubsystem *debug() { return this->debugSubsystem; }
 
 private:
     Engine::RenderEngine engine;
@@ -33,10 +33,14 @@ private:
 
     bool isMainCameraActive() const { return activeCamera == mainCamera.get(); }
 
+    bool isMainCameraRendered() const { return engine.getCamera() == mainCamera.get(); }
+
     void handleControls();
+
     void handleCameraMovement();
 
     void drawGrid();
+
     void drawGizmos();
 };
 

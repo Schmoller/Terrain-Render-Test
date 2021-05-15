@@ -9,8 +9,7 @@ struct MeshInstanceData {
     glm::vec2 translate;
     float scale;
     uint32_t textureIndex;
-    glm::vec2 textureOffset;
-    glm::vec2 textureScale;
+    glm::vec2 morphRange; // x = morphStart, y = morphDist (end - start)
 
     static vk::VertexInputBindingDescription getBindingDescription() {
         return vk::VertexInputBindingDescription(
@@ -20,7 +19,7 @@ struct MeshInstanceData {
         );
     }
 
-    static std::array<vk::VertexInputAttributeDescription, 5> getAttributeDescriptions() {
+    static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescriptions() {
         return {
             vk::VertexInputAttributeDescription {
                 4,
@@ -44,14 +43,8 @@ struct MeshInstanceData {
                 7,
                 1,
                 vk::Format::eR32G32Sfloat,
-                offsetof(MeshInstanceData, textureOffset)
+                offsetof(MeshInstanceData, morphRange)
             },
-            vk::VertexInputAttributeDescription {
-                8,
-                1,
-                vk::Format::eR32G32Sfloat,
-                offsetof(MeshInstanceData, textureScale)
-            }
         };
     }
 };
@@ -59,6 +52,10 @@ struct MeshInstanceData {
 struct TerrainUniform {
     alignas(4) float heightOffset;
     alignas(4) float heightScale;
+    alignas(8) glm::vec2 terrainHalfSize;
+    alignas(8) glm::vec2 terrainMorphConstants;
+    alignas(16) glm::vec3 cameraOrigin;
+    alignas(4) uint32_t debugMode;
 };
 
 struct NodeData {

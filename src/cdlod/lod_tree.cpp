@@ -2,6 +2,7 @@
 #include <deque>
 #include <iostream>
 #include <tech-core/shapes/bounding_sphere.hpp>
+#include <tech-core/debug.hpp>
 
 namespace Terrain::CDLOD {
 
@@ -64,15 +65,14 @@ uint32_t LODTree::walkTree(
     // generate the range spheres
     Engine::BoundingSphere rangeSpheres[maxDepth + 1];
     for (auto layer = 0; layer <= maxDepth; ++layer) {
-        rangeSpheres[layer] = { origin, static_cast<float>(ranges[layer]) };
+        rangeSpheres[layer] = { origin, static_cast<float>(ranges[layer].range) };
+//        Engine::draw(rangeSpheres[layer]);
     }
 
     struct PendingNode {
         size_t id;
         uint32_t level;
         Engine::BoundingBox bounds;
-        glm::vec2 textureStart;
-        glm::vec2 textureEnd;
     };
 
     // start walking the tree from the top to the bottom
@@ -86,9 +86,7 @@ uint32_t LODTree::walkTree(
         {
             1,
             maxDepth,
-            rootBounds,
-            { 0, 0 },
-            { 1, 1 }
+            rootBounds
         }
     );
 
@@ -104,23 +102,21 @@ uint32_t LODTree::walkTree(
         }
 
         if (node.level == 0) {
-            markNodeVisible(node.id, { node.bounds.xMin, node.bounds.yMin }, 1, node.textureStart, node.textureEnd);
+            markNodeVisible({ node.bounds.xMin, node.bounds.yMin }, 1, ranges[0]);
             continue;
         }
 
         if (!node.bounds.intersects(rangeSpheres[node.level - 1])) {
             // we aren't in range of a more detailed level, so do not walk the children
             markNodeVisible(
-                node.id, { node.bounds.xMin, node.bounds.yMin }, static_cast<float>(fast2Pow(node.level)),
-                node.textureStart, node.textureEnd
+                { node.bounds.xMin, node.bounds.yMin }, static_cast<float>(fast2Pow(node.level)),
+                ranges[node.level]
             );
             continue;
         }
 
         auto centerX = (node.bounds.xMin + node.bounds.xMax) / 2.0f;
         auto centerY = (node.bounds.yMin + node.bounds.yMax) / 2.0f;
-        auto textureCenterX = (node.textureStart.x + node.textureEnd.x) / 2.0f;
-        auto textureCenterY = (node.textureStart.y + node.textureEnd.y) / 2.0f;
 
         for (uint32_t child = 0; child < 4; ++child) {
             auto id = calculateChildId(node.id, child);
@@ -129,40 +125,32 @@ uint32_t LODTree::walkTree(
 
             // compute the child nodes bounding box
             Engine::BoundingBox childBounds;
-            glm::vec2 childTexStart, childTexEnd;
             childBounds.zMin = childData.minZ;
             childBounds.zMax = childData.maxZ;
 
             if (isChildXMax(child)) {
                 childBounds.xMin = centerX;
                 childBounds.xMax = node.bounds.xMax;
-                childTexStart.x = textureCenterX;
-                childTexEnd.x = node.textureEnd.x;
             } else {
                 childBounds.xMin = node.bounds.xMin;
                 childBounds.xMax = centerX;
-                childTexStart.x = node.textureStart.x;
-                childTexEnd.x = textureCenterX;
             }
 
             if (isChildYMax(child)) {
                 childBounds.yMin = centerY;
                 childBounds.yMax = node.bounds.yMax;
-                childTexStart.y = textureCenterY;
-                childTexEnd.y = node.textureEnd.y;
             } else {
                 childBounds.yMin = node.bounds.yMin;
                 childBounds.yMax = centerY;
-                childTexStart.y = node.textureStart.y;
-                childTexEnd.y = textureCenterY;
             }
 
             if (childBounds.intersects(rangeSpheres[node.level - 1])) {
-                toProcessNext.push_back({ id, node.level - 1, childBounds, childTexStart, childTexEnd });
+                toProcessNext.push_back({ id, node.level - 1, childBounds });
             } else {
-                markNodeVisibleAtParentScale(
-                    id, { childBounds.xMin, childBounds.yMin }, static_cast<float>(fast2Pow(node.level - 1)),
-                    childTexStart, childTexEnd
+                // TODO: Allow these to be rendered with a half scale mesh using the current nodes level
+                markNodeVisible(
+                    { childBounds.xMin, childBounds.yMin }, static_cast<float>(fast2Pow(node.level - 1)),
+                    ranges[node.level - 1]
                 );
             }
         }
@@ -172,33 +160,30 @@ uint32_t LODTree::walkTree(
 }
 
 void LODTree::markNodeVisible(
-    uint32_t id, const glm::vec2 &offset, float scale, const glm::vec2 &textureStart, const glm::vec2 &textureEnd
+    const glm::vec2 &offset, float scale, const Range &range
 ) {
-    glm::vec2 textureScale = textureEnd - textureStart;
     instanceBufferStaging.push_back(
         {
-            offset, scale * nodeSize, 0, textureStart, textureScale
-        }
-    );
-}
-
-void
-LODTree::markNodeVisibleAtParentScale(
-    uint32_t id, const glm::vec2 &offset, float scale, const glm::vec2 &textureStart, const glm::vec2 &textureEnd
-) {
-    glm::vec2 textureScale = textureEnd - textureStart;
-    instanceBufferStaging.push_back(
-        {
-            offset, scale * nodeSize, 0, textureStart, textureScale
+            offset, scale * nodeSize, 0,
+            { range.transitionStart, static_cast<float>(range.range) - range.transitionStart }
         }
     );
 }
 
 void LODTree::generateRanges() {
     uint32_t baseRange = 5 * nodeSize;
+    uint32_t lastRange = 0;
 
     for (auto layer = 0; layer <= maxDepth; ++layer) {
-        ranges[layer] = baseRange;
+        float layerPercent = static_cast<float>(layer) / static_cast<float>(maxDepth);
+        float band = 0.15f * (1 - layerPercent) + 0.3f * (layerPercent);
+
+        ranges[layer] = {
+            baseRange,
+            static_cast<float>(lastRange) * band + static_cast<float>(baseRange) * (1 - band)
+        };
+
+        lastRange = baseRange;
         baseRange *= 2;
     }
 }

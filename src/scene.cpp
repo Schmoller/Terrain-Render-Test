@@ -1,8 +1,10 @@
 #include "scene.hpp"
-#include "utils/gizmos.hpp"
 
 #include <tech-core/camera.hpp>
 #include <tech-core/subsystem/debug.hpp>
+#include <tech-core/debug.hpp>
+#include <tech-core/shapes/plane.hpp>
+
 #include <iostream>
 
 void Scene::initialize() {
@@ -101,7 +103,7 @@ void Scene::drawGrid() {
 
 void Scene::handleControls() {
     if (this->inputManager->wasPressed(Engine::Key::e1)) {
-        if (isMainCameraActive()) {
+        if (isMainCameraRendered()) {
             std::cout << "Switching to debug camera" << std::endl;
             activeCamera = debugCamera.get();
             engine.setCamera(*debugCamera);
@@ -111,10 +113,21 @@ void Scene::handleControls() {
             engine.setCamera(*mainCamera);
         }
     }
+    if (this->inputManager->wasPressed(Engine::Key::e3)) {
+        if (isMainCameraActive()) {
+            std::cout << "Switching to debug camera (move only)" << std::endl;
+            activeCamera = debugCamera.get();
+        } else {
+            std::cout << "Switching to main camera (move only)" << std::endl;
+            activeCamera = mainCamera.get();
+        }
+    }
     if (this->inputManager->wasPressed(Engine::Key::e2)) {
         cdlod->setWireframe(!cdlod->getWireframe());
     }
-
+    if (this->inputManager->wasPressed(Engine::Key::e4)) {
+        cdlod->setDebugMode(cdlod->getDebugMode() + 1);
+    }
 }
 
 void Scene::handleCameraMovement() {
@@ -189,7 +202,7 @@ void Scene::handleCameraMovement() {
 }
 
 void Scene::drawGizmos() {
-    if (!isMainCameraActive()) {
+    if (!isMainCameraRendered()) {
         // Draw main camera location
         auto pos = mainCamera->getPosition();
         glm::vec3 size { 1, 1, 1 };
@@ -206,7 +219,7 @@ void Scene::drawGizmos() {
             0xFF0000FF
         );
 
-        drawFrustum(debugSubsystem, *mainCamera);
+        Engine::draw(mainCamera->getFrustum());
     }
 
     // Axis gizmo

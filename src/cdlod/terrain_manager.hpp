@@ -32,6 +32,12 @@ public:
 
     bool getWireframe() const { return wireframe; }
 
+    void setDebugMode(uint32_t mode);
+
+    uint32_t getDebugMode() const { return debugMode; }
+
+    uint32_t getDebugModeCount() { return 1; }
+
     // For engine use
     void initialiseResources(vk::Device device, vk::PhysicalDevice physicalDevice, _E::RenderEngine &engine);
 
@@ -53,6 +59,7 @@ private:
     Heightmap *heightmap { nullptr };
 
     bool wireframe { false };
+    uint32_t debugMode { 0 };
 
     Engine::StaticMesh *terrainMesh { nullptr };
     uint32_t meshSize { 32 };

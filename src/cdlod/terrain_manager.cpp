@@ -9,6 +9,7 @@ const Engine::Subsystem::SubsystemID<TerrainManager> TerrainManager::ID;
 
 void TerrainManager::setMeshSize(uint32_t size) {
     meshSize = size;
+    terrainUniform.terrainMorphConstants = { static_cast<float>(meshSize) * 0.5f, 2 / static_cast<float>(meshSize) };
     generateMesh();
 }
 
@@ -23,6 +24,11 @@ void TerrainManager::setCamera(Engine::Camera *camera) {
 
 void TerrainManager::setWireframe(bool enable) {
     wireframe = enable;
+}
+
+void TerrainManager::setDebugMode(uint32_t mode) {
+    debugMode = mode % (getDebugModeCount() + 1);
+    terrainUniform.debugMode = debugMode;
 }
 
 void TerrainManager::generateMesh() {
@@ -135,6 +141,8 @@ void TerrainManager::initialiseResources(
     generateMesh();
     generateLodTree();
     generateInstanceBuffer();
+
+    terrainUniform.terrainMorphConstants = { static_cast<float>(meshSize) * 0.5f, 2 / static_cast<float>(meshSize) };
 }
 
 void TerrainManager::initialiseSwapChainResources(
@@ -296,6 +304,8 @@ void TerrainManager::prepareFrame(uint32_t activeImage) {
     instanceBufferSize = lodTree->walkTree(
         camera->getPosition(), camera->getFrustum(), *instanceBuffer, instanceBufferCapacity
     );
+
+    terrainUniform.cameraOrigin = camera->getPosition();
 }
 
 void TerrainManager::setHeightmap(Heightmap &heightmap) {
@@ -326,6 +336,7 @@ void TerrainManager::setHeightmap(Heightmap &heightmap) {
 
     terrainUniform.heightOffset = heightmap.getMinElevation();
     terrainUniform.heightScale = heightmap.getMaxElevation() - heightmap.getMinElevation();
+    terrainUniform.terrainHalfSize = { heightmap.getWidth() / 2.0f, heightmap.getHeight() / 2.0f };
 }
 
 void TerrainManager::invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2 &max) {
