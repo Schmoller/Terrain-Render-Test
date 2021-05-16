@@ -29,18 +29,15 @@ private:
     // Various terrain algorithms
     Terrain::CDLOD::TerrainManager *cdlod { nullptr };
 
-    void initializeHeightmap();
-
     bool isMainCameraActive() const { return activeCamera == mainCamera.get(); }
 
     bool isMainCameraRendered() const { return engine.getCamera() == mainCamera.get(); }
 
+    void initializeHeightmap();
+    void initTextures();
     void handleControls();
-
     void handleCameraMovement();
-
     void drawGrid();
-
     void drawGizmos();
 };
 

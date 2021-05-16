@@ -15,7 +15,6 @@ public:
     static const Engine::Subsystem::SubsystemID<TerrainManager> ID;
 
     void setCamera(Engine::Camera *);
-
     void setHeightmap(Heightmap &);
 
     void invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2 &max);
@@ -40,17 +39,11 @@ public:
 
     // For engine use
     void initialiseResources(vk::Device device, vk::PhysicalDevice physicalDevice, _E::RenderEngine &engine);
-
     void initialiseSwapChainResources(vk::Device device, _E::RenderEngine &engine, uint32_t swapChainImages);
-
     void cleanupResources(vk::Device device, _E::RenderEngine &engine);
-
     void cleanupSwapChainResources(vk::Device device, _E::RenderEngine &engine);
-
     void writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_t activeImage);
-
     void prepareFrame(uint32_t activeImage) override;
-
     void afterFrame(uint32_t activeImage);
 
 private:
@@ -76,6 +69,8 @@ private:
     uint32_t instanceBufferCapacity { 0 };
 
     vk::Sampler heightmapSampler;
+    uint32_t textureSamplerId { 0 };
+    vk::Sampler textureSampler;
 
     // Render state
     vk::Device device;
@@ -85,6 +80,8 @@ private:
     vk::DescriptorPool descriptorPool;
     std::vector<vk::DescriptorSet> descriptorSets;
     uint32_t swapChainImages { 0 };
+
+    uint32_t textureArray { 0xFFFFFFFF };
 
     void generateMesh();
 

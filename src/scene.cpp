@@ -36,6 +36,8 @@ void Scene::initialize() {
     cdlod = engine.getSubsystem(Terrain::CDLOD::TerrainManager::ID);
     cdlod->setCamera(mainCamera.get());
     cdlod->setHeightmap(*heightmap);
+
+    initTextures();
 }
 
 void Scene::run() {
@@ -243,4 +245,11 @@ void Scene::drawGizmos() {
 void Scene::initializeHeightmap() {
     heightmap = std::make_unique<Heightmap>("assets/textures/heightmap.png", engine);
     // heightmap = std::make_unique<Heightmap>(4096, 4096, engine);
+}
+
+void Scene::initTextures() {
+    engine.getTextureManager().createTexture("grass")
+        .fromFile("assets/textures/grass.png")
+        .withMipMode(Engine::MipType::Generate)
+        .build();
 }

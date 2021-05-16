@@ -138,6 +138,17 @@ void TerrainManager::initialiseResources(
     samplerCreateInfo.setAnisotropyEnable(VK_FALSE);
     heightmapSampler = device.createSampler(samplerCreateInfo);
 
+    // Create a sampler we can use for texture rendering
+    textureSamplerId = engine.getMaterialManager().createSampler(
+        {
+            vk::Filter::eLinear,
+            vk::Filter::eLinear,
+            vk::SamplerMipmapMode::eLinear,
+            true
+        }
+    );
+    textureSampler = engine.getMaterialManager().getSamplerById(textureSamplerId);
+
     generateMesh();
     generateLodTree();
     generateInstanceBuffer();
@@ -285,6 +296,10 @@ void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_
         commandBuffer, 0, static_cast<uint32_t>(globalDescriptors.size()), globalDescriptors.data(), 0, nullptr
     );
 
+    // Texture binding
+    auto binding = engine->getTextureManager().getBinding(textureArray, textureSamplerId, textureSampler);
+    currentPipeline->bindDescriptorSets(commandBuffer, 1, 1, &binding, 0, nullptr);
+
     terrainMesh->bind(commandBuffer);
 
     if (instanceBufferSize > 0) {
@@ -301,6 +316,11 @@ void TerrainManager::afterFrame(uint32_t activeImage) {
 }
 
 void TerrainManager::prepareFrame(uint32_t activeImage) {
+    if (textureArray == 0xFFFFFFFF) {
+        auto texture = engine->getTextureManager().getTexture("grass");
+        textureArray = texture->arrayId;
+    }
+
     instanceBufferSize = lodTree->walkTree(
         camera->getPosition(), camera->getFrustum(), *instanceBuffer, instanceBufferCapacity
     );

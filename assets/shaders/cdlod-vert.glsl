@@ -68,7 +68,9 @@ void main() {
     // Transform into screen space
     gl_Position = cam.proj * cam.view * vec4(vertexPos, 1.0);
     fragNormal = inNormal;
-    fragTexCoord = vec3(inTexCoord, meshTextureIndex);
+
+    vec2 texCoord = ((vertexPos2D / terrain.halfSize) + vec2(0.5, 0.5)) * 100;
+    fragTexCoord = vec3(texCoord, meshTextureIndex);
 
     // Debug features
     if (terrain.debugMode == DM_RANGES) {

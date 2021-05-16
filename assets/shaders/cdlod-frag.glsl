@@ -7,9 +7,8 @@ layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec4 fragColour;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec3 fragTexCoord;
-//layout(set = 3, binding = 2) uniform sampler2DArray texSampler;
+layout(set = 1, binding = 2) uniform sampler2DArray texSampler;
 
 void main() {
-    //    outColor = texture(texSampler, fragTexCoord) * fragColour;
-    outColor = fragColour;
+    outColor = texture(texSampler, fragTexCoord) * fragColour;
 }
