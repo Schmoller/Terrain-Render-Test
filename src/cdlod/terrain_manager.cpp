@@ -2,6 +2,7 @@
 #include <tech-core/vertex.hpp>
 #include <vector>
 #include <iostream>
+#include "../utils/instance_buffer.inl"
 
 namespace Terrain::CDLOD {
 
@@ -10,7 +11,7 @@ const Engine::Subsystem::SubsystemID<TerrainManager> TerrainManager::ID;
 void TerrainManager::setMeshSize(uint32_t size) {
     meshSize = size;
     terrainUniform.terrainMorphConstants = { static_cast<float>(meshSize) * 0.5f, 2 / static_cast<float>(meshSize) };
-    generateMesh();
+    regenerateMeshes();
 }
 
 void TerrainManager::setMaxLodLevels(uint32_t levels) {
@@ -31,21 +32,38 @@ void TerrainManager::setDebugMode(uint32_t mode) {
     terrainUniform.debugMode = debugMode;
 }
 
-void TerrainManager::generateMesh() {
-    auto totalVertices = (meshSize + 1) * (meshSize + 1);
-    auto totalIndices = meshSize * meshSize * 6;
+void TerrainManager::regenerateMeshes() {
+    if (terrainMesh) {
+        engine->removeMesh(terrainMeshName);
+    }
 
-    auto meshSizeFloat = static_cast<float>(meshSize);
+    if (terrainHalfResolutionMesh) {
+        engine->removeMesh(terrainHalfMeshName);
+    }
+
+    auto halfRes = meshSize >> 1;
+    std::sprintf(terrainMeshName, "cdlod-mesh-%d", meshSize);
+    std::sprintf(terrainHalfMeshName, "cdlod-mesh-%d", halfRes);
+
+    terrainMesh = generateMesh(meshSize, terrainMeshName);
+    terrainHalfResolutionMesh = generateMesh(halfRes, terrainHalfMeshName);
+}
+
+Engine::StaticMesh *TerrainManager::generateMesh(uint32_t size, const char *name) {
+    auto totalVertices = (size + 1) * (size + 1);
+    auto totalIndices = size * size * 6;
+
+    auto sizeFloat = static_cast<float>(size);
 
     std::vector<Engine::Vertex> vertices(totalVertices);
     std::vector<uint16_t> indices(totalIndices);
 
-    float scale = 1 / meshSizeFloat;
+    float scale = 1 / sizeFloat;
 
     // produce the vertices
-    for (uint32_t row = 0; row < meshSize + 1; ++row) {
-        for (uint32_t column = 0; column < meshSize + 1; ++column) {
-            auto index = column + row * (meshSize + 1);
+    for (uint32_t row = 0; row < size + 1; ++row) {
+        for (uint32_t column = 0; column < size + 1; ++column) {
+            auto index = column + row * (size + 1);
 
             vertices[index] = Engine::Vertex {
                 { static_cast<float>(column) * scale, static_cast<float>(row) * scale, 0.0f },
@@ -58,12 +76,12 @@ void TerrainManager::generateMesh() {
 
     // produce the triangles
     uint32_t startIndex = 0;
-    for (uint32_t row = 0; row < meshSize; ++row) {
-        for (uint32_t column = 0; column < meshSize; ++column) {
-            auto index = column + row * (meshSize + 1);
-            auto indexRight = (column + 1) + row * (meshSize + 1);
-            auto indexDown = column + (row + 1) * (meshSize + 1);
-            auto indexDownRight = (column + 1) + (row + 1) * (meshSize + 1);
+    for (uint32_t row = 0; row < size; ++row) {
+        for (uint32_t column = 0; column < size; ++column) {
+            auto index = column + row * (size + 1);
+            auto indexRight = (column + 1) + row * (size + 1);
+            auto indexDown = column + (row + 1) * (size + 1);
+            auto indexDownRight = (column + 1) + (row + 1) * (size + 1);
 
             indices[startIndex + 0] = index;
             indices[startIndex + 1] = indexRight;
@@ -76,17 +94,10 @@ void TerrainManager::generateMesh() {
         }
     }
 
-    // compute vertex is and indices
-    auto mesh = engine->createStaticMesh<Engine::Vertex>("cdlod-mesh")
+    return engine->createStaticMesh<Engine::Vertex>(name)
         .withVertices(vertices)
         .withIndices(indices)
         .build();
-
-    if (terrainMesh) {
-        // FIXME: There is no way to release a mesh yet. This will be a memory leak
-    }
-
-    terrainMesh = mesh;
 }
 
 void TerrainManager::generateLodTree() {
@@ -95,14 +106,10 @@ void TerrainManager::generateLodTree() {
 
 void TerrainManager::generateInstanceBuffer() {
     // Create an instance buffer which is large enough to hold the typical amount of nodes
-    instanceBufferCapacity = static_cast<uint32_t>(lodTree->getTotalNodes() * instanceBufferLoadFactor);
+    auto capacity = static_cast<uint32_t>(lodTree->getTotalNodes() * instanceBufferLoadFactor);
 
-    std::cout << "Nodes: " << lodTree->getTotalNodes() << std::endl;
-    vk::DeviceSize bufferSize = instanceBufferCapacity * sizeof(MeshInstanceData);
-
-    instanceBuffer = engine->getBufferManager().aquire(
-        bufferSize, vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryUsage::eCPUToGPU
-    );
+    fullResTiles = std::make_unique<InstanceBuffer<MeshInstanceData>>(capacity, *engine);
+    halfResTiles = std::make_unique<InstanceBuffer<MeshInstanceData>>(capacity, *engine);
 }
 
 void TerrainManager::initialiseResources(
@@ -149,7 +156,7 @@ void TerrainManager::initialiseResources(
     );
     textureSampler = engine.getMaterialManager().getSamplerById(textureSamplerId);
 
-    generateMesh();
+    regenerateMeshes();
     generateLodTree();
     generateInstanceBuffer();
 
@@ -270,7 +277,9 @@ void TerrainManager::initialiseSwapChainResources(
 void TerrainManager::cleanupResources(vk::Device device, Engine::RenderEngine &engine) {
     device.destroy(heightmapSampler);
     device.destroyDescriptorSetLayout(descriptorLayout);
-    instanceBuffer.reset();
+
+    fullResTiles.reset();
+    halfResTiles.reset();
 }
 
 void TerrainManager::cleanupSwapChainResources(vk::Device device, Engine::RenderEngine &engine) {
@@ -300,15 +309,9 @@ void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_
     auto binding = engine->getTextureManager().getBinding(textureArray, textureSamplerId, textureSampler);
     currentPipeline->bindDescriptorSets(commandBuffer, 1, 1, &binding, 0, nullptr);
 
-    terrainMesh->bind(commandBuffer);
-
-    if (instanceBufferSize > 0) {
-        vk::DeviceSize offsets = 0;
-        commandBuffer.bindVertexBuffers(1, 1, instanceBuffer->bufferArray(), &offsets);
-        currentPipeline->push(commandBuffer, vk::ShaderStageFlagBits::eVertex, terrainUniform);
-        commandBuffer.drawIndexed(terrainMesh->getIndexCount(), instanceBufferSize, 0, 0, 0);
-    }
-
+    currentPipeline->push(commandBuffer, vk::ShaderStageFlagBits::eVertex, terrainUniform);
+    fullResTiles->draw(commandBuffer, *terrainMesh);
+    halfResTiles->draw(commandBuffer, *terrainHalfResolutionMesh);
 }
 
 void TerrainManager::afterFrame(uint32_t activeImage) {
@@ -321,8 +324,8 @@ void TerrainManager::prepareFrame(uint32_t activeImage) {
         textureArray = texture->arrayId;
     }
 
-    instanceBufferSize = lodTree->walkTree(
-        camera->getPosition(), camera->getFrustum(), *instanceBuffer, instanceBufferCapacity
+    lodTree->walkTree(
+        camera->getPosition(), camera->getFrustum(), *fullResTiles, *halfResTiles
     );
 
     terrainUniform.cameraOrigin = camera->getPosition();

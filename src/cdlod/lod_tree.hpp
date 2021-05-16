@@ -7,6 +7,10 @@
 #include "structures.hpp"
 #include "../heightmap.hpp"
 
+// Forward
+template<typename T>
+class InstanceBuffer;
+
 namespace Terrain::CDLOD {
 
 class LODTree {
@@ -25,9 +29,9 @@ public:
         return nodeSize;
     }
 
-    uint32_t walkTree(
-        const glm::vec3 &origin, const Engine::Frustum &frustum, Engine::Buffer &instanceBuffer,
-        uint32_t maxInstanceCount
+    void walkTree(
+        const glm::vec3 &origin, const Engine::Frustum &frustum, InstanceBuffer<MeshInstanceData> &fullTiles,
+        InstanceBuffer<MeshInstanceData> &halfTiles
     );
 
     void computeHeights(Heightmap *, const glm::ivec2 &min, const glm::ivec2 &max);
@@ -49,13 +53,10 @@ private:
     std::vector<NodeData> nodes;
     std::vector<Range> ranges;
 
-    std::vector<MeshInstanceData> instanceBufferStaging;
-
     void generateRanges();
 
-    void markNodeVisible(const glm::vec2 &offset, float scale, const Range &rang);
-
-    uint32_t finalizeInstanceBuffer(Engine::Buffer &instanceBuffer, uint32_t maxInstanceCount);
+    void
+    markNodeVisible(const glm::vec2 &offset, float scale, const Range &range, InstanceBuffer<MeshInstanceData> &dest);
 
     void doMinMax(
         uint32_t id, uint32_t level, const glm::uvec2 &min, const glm::uvec2 &max,

@@ -6,6 +6,7 @@
 
 #include "../heightmap.hpp"
 #include "lod_tree.hpp"
+#include "../utils/instance_buffer.hpp"
 
 namespace Terrain::CDLOD {
 namespace _E = Engine;
@@ -55,6 +56,9 @@ private:
     uint32_t debugMode { 0 };
 
     Engine::StaticMesh *terrainMesh { nullptr };
+    char terrainMeshName[32];
+    Engine::StaticMesh *terrainHalfResolutionMesh { nullptr };
+    char terrainHalfMeshName[32];
     uint32_t meshSize { 32 };
 
     uint32_t maxLodLevels { 7 };
@@ -64,9 +68,8 @@ private:
 
     // Mesh Instance Buffer
     float instanceBufferLoadFactor { 0.5f };
-    std::unique_ptr<Engine::Buffer> instanceBuffer;
-    uint32_t instanceBufferSize { 0 };
-    uint32_t instanceBufferCapacity { 0 };
+    std::unique_ptr<InstanceBuffer<MeshInstanceData>> fullResTiles;
+    std::unique_ptr<InstanceBuffer<MeshInstanceData>> halfResTiles;
 
     vk::Sampler heightmapSampler;
     uint32_t textureSamplerId { 0 };
@@ -83,7 +86,8 @@ private:
 
     uint32_t textureArray { 0xFFFFFFFF };
 
-    void generateMesh();
+    void regenerateMeshes();
+    Engine::StaticMesh *generateMesh(uint32_t size, const char *name);
 
     void generateLodTree();
 

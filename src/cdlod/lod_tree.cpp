@@ -3,6 +3,8 @@
 #include <iostream>
 #include <tech-core/shapes/bounding_sphere.hpp>
 #include <tech-core/debug.hpp>
+#include "../utils/instance_buffer.hpp"
+#include "../utils/instance_buffer.inl"
 
 namespace Terrain::CDLOD {
 
@@ -57,10 +59,12 @@ LODTree::LODTree(uint32_t maxDepth, uint32_t nodeSize, const glm::vec2 &center)
     std::cout << "size: " << size.x << "," << size.y << std::endl;
 }
 
-uint32_t LODTree::walkTree(
-    const glm::vec3 &origin, const Engine::Frustum &frustum, Engine::Buffer &instanceBuffer, uint32_t maxInstanceCount
+void LODTree::walkTree(
+    const glm::vec3 &origin, const Engine::Frustum &frustum, InstanceBuffer<MeshInstanceData> &fullTiles,
+    InstanceBuffer<MeshInstanceData> &halfTiles
 ) {
-    instanceBufferStaging.clear();
+    fullTiles.clear();
+    halfTiles.clear();
 
     // generate the range spheres
     Engine::BoundingSphere rangeSpheres[maxDepth + 1];
@@ -102,7 +106,7 @@ uint32_t LODTree::walkTree(
         }
 
         if (node.level == 0) {
-            markNodeVisible({ node.bounds.xMin, node.bounds.yMin }, 1, ranges[0]);
+            markNodeVisible({ node.bounds.xMin, node.bounds.yMin }, 1, ranges[0], fullTiles);
             continue;
         }
 
@@ -110,7 +114,7 @@ uint32_t LODTree::walkTree(
             // we aren't in range of a more detailed level, so do not walk the children
             markNodeVisible(
                 { node.bounds.xMin, node.bounds.yMin }, static_cast<float>(fast2Pow(node.level)),
-                ranges[node.level]
+                ranges[node.level], fullTiles
             );
             continue;
         }
@@ -147,22 +151,22 @@ uint32_t LODTree::walkTree(
             if (childBounds.intersects(rangeSpheres[node.level - 1])) {
                 toProcessNext.push_back({ id, node.level - 1, childBounds });
             } else {
-                // TODO: Allow these to be rendered with a half scale mesh using the current nodes level
                 markNodeVisible(
                     { childBounds.xMin, childBounds.yMin }, static_cast<float>(fast2Pow(node.level - 1)),
-                    ranges[node.level - 1]
+                    ranges[node.level], halfTiles
                 );
             }
         }
     }
 
-    return finalizeInstanceBuffer(instanceBuffer, maxInstanceCount);
+    fullTiles.flush();
+    halfTiles.flush();
 }
 
 void LODTree::markNodeVisible(
-    const glm::vec2 &offset, float scale, const Range &range
+    const glm::vec2 &offset, float scale, const Range &range, InstanceBuffer<MeshInstanceData> &dest
 ) {
-    instanceBufferStaging.push_back(
+    dest.push(
         {
             offset, scale * nodeSize, 0,
             { range.transitionStart, static_cast<float>(range.range) - range.transitionStart }
@@ -186,29 +190,6 @@ void LODTree::generateRanges() {
         lastRange = baseRange;
         baseRange *= 2;
     }
-}
-
-uint32_t LODTree::finalizeInstanceBuffer(Engine::Buffer &instanceBuffer, uint32_t maxInstanceCount) {
-    size_t instances;
-    if (instanceBufferStaging.size() > maxInstanceCount) {
-        instances = maxInstanceCount;
-        std::cout << "WARNING: Too many terrain nodes being rendered. Wanted " << instanceBufferStaging.size()
-            << " limit " << maxInstanceCount << std::endl;
-    } else {
-        instances = instanceBufferStaging.size();
-    }
-
-    vk::DeviceSize totalSize = instances * sizeof(MeshInstanceData);
-
-    void *mappedData;
-    instanceBuffer.map(&mappedData);
-
-    std::memcpy(mappedData, instanceBufferStaging.data(), totalSize);
-
-    instanceBuffer.unmap();
-    instanceBuffer.flushRange(0, totalSize);
-
-    return instances;
 }
 
 void LODTree::computeHeights(Heightmap *heightmap, const glm::ivec2 &min, const glm::ivec2 &max) {
