@@ -2,15 +2,17 @@
 
 #include <tech-core/camera.hpp>
 #include <tech-core/subsystem/debug.hpp>
+#include <tech-core/subsystem/imgui.hpp>
 #include <tech-core/debug.hpp>
 #include <tech-core/shapes/plane.hpp>
-
 #include <iostream>
+#include <imgui.h>
 
 void Scene::initialize() {
     // Initialise subsystems for rendering
     engine.addSubsystem(Engine::Subsystem::DebugSubsystem::ID);
     engine.addSubsystem(Terrain::CDLOD::TerrainManager::ID);
+    engine.addSubsystem(Engine::Subsystem::ImGuiSubsystem::ID);
 
 
     // Initialise the engine
@@ -41,7 +43,7 @@ void Scene::initialize() {
 }
 
 void Scene::run() {
-    this->inputManager->captureMouse();
+//    this->inputManager->captureMouse();
 
     while (engine.beginFrame()) {
         if (this->inputManager->isPressed(Engine::Key::eEscape)) {
@@ -51,6 +53,9 @@ void Scene::run() {
         handleControls();
         handleCameraMovement();
 
+        bool open = true;
+        ImGui::ShowDemoWindow(&open);
+
         // Produce a debug grid
 //        drawGrid();
         drawGizmos();
@@ -58,7 +63,7 @@ void Scene::run() {
         engine.render();
     }
 
-    this->inputManager->releaseMouse();
+//    this->inputManager->releaseMouse();
 }
 
 void Scene::drawGrid() {
@@ -142,8 +147,9 @@ void Scene::handleCameraMovement() {
 
     auto mouseDelta = input.getMouseDelta();
 
-    activeCamera->setYaw(activeCamera->getYaw() + mouseDelta.x * lookSensitivity);
-    activeCamera->setPitch(activeCamera->getPitch() - mouseDelta.y * lookSensitivity);
+    // TODO: Use mouse drag to set these
+//    activeCamera->setYaw(activeCamera->getYaw() + mouseDelta.x * lookSensitivity);
+//    activeCamera->setPitch(activeCamera->getPitch() - mouseDelta.y * lookSensitivity);
 
     // Movement
 
