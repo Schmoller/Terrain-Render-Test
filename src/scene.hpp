@@ -26,6 +26,10 @@ private:
     Engine::FPSCamera *activeCamera { nullptr };
 
     std::unique_ptr<Heightmap> heightmap;
+
+    // Settings
+    bool wireframe { false };
+
     // Various terrain algorithms
     Terrain::CDLOD::TerrainManager *cdlod { nullptr };
 
@@ -39,6 +43,7 @@ private:
     void handleCameraMovement();
     void drawGrid();
     void drawGizmos();
+    void drawGUI();
 };
 
 

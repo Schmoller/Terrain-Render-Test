@@ -34,9 +34,11 @@ public:
 
     void setDebugMode(uint32_t mode);
 
-    uint32_t getDebugMode() const { return debugMode; }
+    uint32_t getDebugMode() const { return terrainUniform.debugMode; }
 
     uint32_t getDebugModeCount() { return 1; }
+
+    void drawGUI();
 
     // For engine use
     void initialiseResources(vk::Device device, vk::PhysicalDevice physicalDevice, _E::RenderEngine &engine);
@@ -53,13 +55,13 @@ private:
     Heightmap *heightmap { nullptr };
 
     bool wireframe { false };
-    uint32_t debugMode { 0 };
 
     Engine::StaticMesh *terrainMesh { nullptr };
     char terrainMeshName[32];
     Engine::StaticMesh *terrainHalfResolutionMesh { nullptr };
     char terrainHalfMeshName[32];
     uint32_t meshSize { 32 };
+    int meshSizeIndex { 3 };
 
     uint32_t maxLodLevels { 7 };
     std::unique_ptr<LODTree> lodTree;
@@ -70,6 +72,8 @@ private:
     float instanceBufferLoadFactor { 0.5f };
     std::unique_ptr<InstanceBuffer<MeshInstanceData>> fullResTiles;
     std::unique_ptr<InstanceBuffer<MeshInstanceData>> halfResTiles;
+    bool renderFullRes { true };
+    bool renderHalfRes { true };
 
     vk::Sampler heightmapSampler;
     uint32_t textureSamplerId { 0 };

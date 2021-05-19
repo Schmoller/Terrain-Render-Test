@@ -3,8 +3,14 @@
 #include <vector>
 #include <iostream>
 #include "../utils/instance_buffer.inl"
+#include <imgui.h>
+#include <iostream>
+#include <array>
 
 namespace Terrain::CDLOD {
+
+std::array<uint32_t, 7> meshSizes = { 256, 128, 64, 32, 16, 8, 4 };
+std::array<const char *, 7> meshSizeNames = { "256", "128", "64", "32", "16", "8", "4" };
 
 const Engine::Subsystem::SubsystemID<TerrainManager> TerrainManager::ID;
 
@@ -28,8 +34,7 @@ void TerrainManager::setWireframe(bool enable) {
 }
 
 void TerrainManager::setDebugMode(uint32_t mode) {
-    debugMode = mode % (getDebugModeCount() + 1);
-    terrainUniform.debugMode = debugMode;
+    terrainUniform.debugMode = mode % (getDebugModeCount() + 1);
 }
 
 void TerrainManager::regenerateMeshes() {
@@ -310,8 +315,12 @@ void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_
     currentPipeline->bindDescriptorSets(commandBuffer, 1, 1, &binding, 0, nullptr);
 
     currentPipeline->push(commandBuffer, vk::ShaderStageFlagBits::eVertex, terrainUniform);
-    fullResTiles->draw(commandBuffer, *terrainMesh);
-    halfResTiles->draw(commandBuffer, *terrainHalfResolutionMesh);
+    if (renderFullRes) {
+        fullResTiles->draw(commandBuffer, *terrainMesh);
+    }
+    if (renderHalfRes) {
+        halfResTiles->draw(commandBuffer, *terrainHalfResolutionMesh);
+    }
 }
 
 void TerrainManager::afterFrame(uint32_t activeImage) {
@@ -365,6 +374,32 @@ void TerrainManager::setHeightmap(Heightmap &heightmap) {
 void TerrainManager::invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2 &max) {
     // recalculate min and max heights within the area for each node
     lodTree->computeHeights(heightmap, min, max);
+}
+
+void TerrainManager::drawGUI() {
+    ImGui::Combo("Debug Mode", reinterpret_cast<int *>(&terrainUniform.debugMode), "None\0Range\0");
+
+    ImGui::Spacing();
+    if (ImGui::Combo("Mesh Size", &meshSizeIndex, meshSizeNames.data(), meshSizeNames.size())) {
+        setMeshSize(meshSizes[meshSizeIndex]);
+    }
+
+    if (ImGui::SliderInt("Lod Levels", reinterpret_cast<int *>(&maxLodLevels), 2, 11)) {
+        setMaxLodLevels(maxLodLevels);
+        invalidateHeightmap({}, { heightmap->getWidth(), heightmap->getHeight() });
+    }
+
+    ImGui::Spacing();
+
+    ImGui::Text("Full res tiles: %i", fullResTiles->size());
+    ImGui::Indent();
+    ImGui::Checkbox("Render FR", &renderFullRes);
+    ImGui::Unindent();
+
+    ImGui::Text("Half res tiles: %i", halfResTiles->size());
+    ImGui::Indent();
+    ImGui::Checkbox("Render HR", &renderHalfRes);
+    ImGui::Unindent();
 }
 
 

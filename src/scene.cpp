@@ -53,8 +53,7 @@ void Scene::run() {
         handleControls();
         handleCameraMovement();
 
-        bool open = true;
-        ImGui::ShowDemoWindow(&open);
+        drawGUI();
 
         // Produce a debug grid
 //        drawGrid();
@@ -258,4 +257,20 @@ void Scene::initTextures() {
         .fromFile("assets/textures/grass.png")
         .withMipMode(Engine::MipType::Generate)
         .build();
+}
+
+void Scene::drawGUI() {
+    ImGui::Begin("Terrain Playground", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+    if (ImGui::Checkbox("Wireframe", &wireframe)) {
+        cdlod->setWireframe(wireframe);
+    }
+
+    if (ImGui::CollapsingHeader("CD LOD", ImGuiTreeNodeFlags_DefaultOpen)) {
+        cdlod->drawGUI();
+    }
+
+    ImGui::End();
+
+    ImGui::ShowDemoWindow();
 }
