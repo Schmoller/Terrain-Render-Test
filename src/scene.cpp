@@ -8,6 +8,8 @@
 #include <iostream>
 #include <imgui.h>
 
+const float AverageFPSFactor = 0.983;
+
 void Scene::initialize() {
     // Initialise subsystems for rendering
     engine.addSubsystem(Engine::Subsystem::DebugSubsystem::ID);
@@ -45,10 +47,20 @@ void Scene::initialize() {
 void Scene::run() {
 //    this->inputManager->captureMouse();
 
+    lastFrameStart = std::chrono::high_resolution_clock::now();
+
     while (engine.beginFrame()) {
         if (this->inputManager->isPressed(Engine::Key::eEscape)) {
             break;
         }
+
+        auto frameStart = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> timeDelta = frameStart - lastFrameStart;
+        lastFrameStart = frameStart;
+        frameTimes.push(timeDelta.count());
+        instantFPS = 1.0f / timeDelta.count();
+        averageFPS = averageFPS * AverageFPSFactor + instantFPS * (1 - AverageFPSFactor);
+        instantFrameTime = timeDelta.count();
 
         handleControls();
         handleCameraMovement();
@@ -260,6 +272,8 @@ void Scene::initTextures() {
 }
 
 void Scene::drawGUI() {
+    drawOverlayInfo();
+
     ImGui::Begin("Terrain Playground", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
     if (ImGui::Checkbox("Wireframe", &wireframe)) {
@@ -273,4 +287,38 @@ void Scene::drawGUI() {
     ImGui::End();
 
     ImGui::ShowDemoWindow();
+}
+
+void Scene::drawOverlayInfo() {
+    const float PAD = 10.0f;
+
+    ImGuiIO &io = ImGui::GetIO();
+    ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+
+    // Fix to top right corner
+    const ImGuiViewport *viewport = ImGui::GetMainViewport();
+    ImVec2 workPos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+    ImVec2 workSize = viewport->WorkSize;
+    ImVec2 windowPos, windowPosPivot;
+    windowPos.x = (workPos.x + workSize.x - PAD);
+    windowPos.y = (workPos.y + PAD);
+    windowPosPivot.x = 1.0f;
+    windowPosPivot.y = 0.0f;
+    ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always, windowPosPivot);
+    flags |= ImGuiWindowFlags_NoMove;
+    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+
+    ImGui::Begin("FPS Info", nullptr, flags);
+    ImGui::Text("FPS: %.1f (%.1f)", averageFPS, instantFPS);
+    ImGui::Text("Frame Time: %.3fms", instantFrameTime * 1000);
+
+    ImGui::Spacing();
+    ImGui::PlotLines(
+        "Frame Times", frameTimes.getRaw().data(), frameTimes.getSize(), frameTimes.getOffset(), nullptr, 0, 0.1,
+        ImVec2(0, 30.0f)
+    );
+
+    ImGui::End();
 }

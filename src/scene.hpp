@@ -5,6 +5,10 @@
 #include <memory>
 
 #include "cdlod/terrain_manager.hpp"
+#include <chrono>
+#include "utils/circular_buffer.hpp"
+
+const uint32_t MaxFrameTimePoints = 200;
 
 class Scene {
 public:
@@ -25,6 +29,13 @@ private:
 
     Engine::FPSCamera *activeCamera { nullptr };
 
+    // FPS
+    std::chrono::high_resolution_clock::time_point lastFrameStart;
+    float averageFPS { 0 };
+    float instantFPS { 0 };
+    float instantFrameTime { 0 };
+    CircularBuffer<MaxFrameTimePoints> frameTimes;
+
     std::unique_ptr<Heightmap> heightmap;
 
     // Settings
@@ -44,6 +55,7 @@ private:
     void drawGrid();
     void drawGizmos();
     void drawGUI();
+    void drawOverlayInfo();
 };
 
 
