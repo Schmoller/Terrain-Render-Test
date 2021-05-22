@@ -5,6 +5,7 @@
 #include <tech-core/subsystem/imgui.hpp>
 #include <tech-core/debug.hpp>
 #include <tech-core/shapes/plane.hpp>
+#include <tech-core/shapes/bounding_sphere.hpp>
 #include <iostream>
 #include <imgui.h>
 
@@ -21,14 +22,17 @@ void Scene::initialize() {
     engine.initialize("Terrain Test");
 
     // Initialise camera
-    mainCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3 { 0, 0, 520 }, 0, 0);
+//    mainCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3 { 0, 0, 520 }, 0, 0);
+    mainCamera = std::make_unique<OverheadCamera>(
+        90, glm::vec3 { 0, 0, 520 }, 20, 0, -45.0f
+    );
     debugCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3 { 0, 0, 520 }, 0, 0);
 
-    mainCamera->lookAt({ 0, 40, 0 });
+//    mainCamera->lookAt({ 0, 40, 0 });
     debugCamera->lookAt({ 0, 40, 0 });
 
-    engine.setCamera(*mainCamera);
-    activeCamera = mainCamera.get();
+    engine.setCamera(mainCamera->getCamera());
+//    activeCamera = mainCamera.get();
 
     // Populate some info
     this->inputManager = &engine.getInputManager();
@@ -38,7 +42,7 @@ void Scene::initialize() {
 
     // initialize terrain algorithms
     cdlod = engine.getSubsystem(Terrain::CDLOD::TerrainManager::ID);
-    cdlod->setCamera(mainCamera.get());
+    cdlod->setCamera(&mainCamera->getCamera());
     cdlod->setHeightmap(*heightmap);
 
     initTextures();
@@ -63,7 +67,7 @@ void Scene::run() {
         instantFrameTime = timeDelta.count();
 
         handleControls();
-        handleCameraMovement();
+        handleCameraMovement(timeDelta.count());
 
         drawGUI();
 
@@ -120,26 +124,26 @@ void Scene::drawGrid() {
 }
 
 void Scene::handleControls() {
-    if (this->inputManager->wasPressed(Engine::Key::e1)) {
-        if (isMainCameraRendered()) {
-            std::cout << "Switching to debug camera" << std::endl;
-            activeCamera = debugCamera.get();
-            engine.setCamera(*debugCamera);
-        } else {
-            std::cout << "Switching to main camera" << std::endl;
-            activeCamera = mainCamera.get();
-            engine.setCamera(*mainCamera);
-        }
-    }
-    if (this->inputManager->wasPressed(Engine::Key::e3)) {
-        if (isMainCameraActive()) {
-            std::cout << "Switching to debug camera (move only)" << std::endl;
-            activeCamera = debugCamera.get();
-        } else {
-            std::cout << "Switching to main camera (move only)" << std::endl;
-            activeCamera = mainCamera.get();
-        }
-    }
+//    if (this->inputManager->wasPressed(Engine::Key::e1)) {
+//        if (isMainCameraRendered()) {
+//            std::cout << "Switching to debug camera" << std::endl;
+//            activeCamera = debugCamera.get();
+//            engine.setCamera(*debugCamera);
+//        } else {
+//            std::cout << "Switching to main camera" << std::endl;
+//            activeCamera = mainCamera.get();
+//            engine.setCamera(*mainCamera);
+//        }
+//    }
+//    if (this->inputManager->wasPressed(Engine::Key::e3)) {
+//        if (isMainCameraActive()) {
+//            std::cout << "Switching to debug camera (move only)" << std::endl;
+//            activeCamera = debugCamera.get();
+//        } else {
+//            std::cout << "Switching to main camera (move only)" << std::endl;
+//            activeCamera = mainCamera.get();
+//        }
+//    }
     if (this->inputManager->wasPressed(Engine::Key::e2)) {
         cdlod->setWireframe(!cdlod->getWireframe());
     }
@@ -148,98 +152,187 @@ void Scene::handleControls() {
     }
 }
 
-void Scene::handleCameraMovement() {
+void Scene::handleCameraMovement(double deltaSeconds) {
     auto &input = *this->inputManager;
 
     // Camera Rotation
     const float lookSensitivity = 0.1f;
     const float moveSensitivity = 0.3f;
     const float moveSensitivityDebug = 1.0f;
+    const float maxTargetDist = 100;
 
-    auto mouseDelta = input.getMouseDelta();
+    if (input.wasPressed(Engine::Key::eMouseRight) && panRotate == PanRotateState::None) {
+        panRotate = PanRotateState::Panning;
+        panTarget = mainCamera->getTarget();
+        cursorOriginal = input.getMousePos();
+        input.captureMouse();
+    }
+    if (input.wasPressed(Engine::Key::eMouseMiddle) && panRotate == PanRotateState::None) {
+        panRotate = PanRotateState::Rotating;
+        rotateYaw = mainCamera->getYaw();
+        rotatePitch = mainCamera->getPitch();
+        cursorOriginal = input.getMousePos();
+        input.captureMouse();
+    }
+
+    if (panRotate == PanRotateState::Panning) {
+        if (input.isPressed(Engine::Key::eMouseRight)) {
+            auto diff = input.getMouseDelta();
+
+            auto forwardPlane = mainCamera->getForward();
+            forwardPlane.z = 0;
+            forwardPlane = glm::normalize(forwardPlane);
+
+            auto rightPlane = mainCamera->getCamera().getRight();
+            rightPlane.z = 0;
+            rightPlane = glm::normalize(rightPlane);
+
+            panTarget += rightPlane * diff.x + forwardPlane * -diff.y;
+
+            // Keep target within a range around the camera
+            auto targetDiff = panTarget - mainCamera->getTarget();
+            auto distanceToNewTarget = glm::length(targetDiff);
+            if (distanceToNewTarget > maxTargetDist) {
+                targetDiff = glm::normalize(targetDiff);
+                panTarget = mainCamera->getTarget() + targetDiff * maxTargetDist;
+            }
+
+            mainCamera->moveToUsingTime(panTarget, 0.35);
+        } else {
+            panRotate = PanRotateState::None;
+            input.releaseMouse();
+            input.setMousePos(cursorOriginal);
+        }
+    } else if (panRotate == PanRotateState::Rotating) {
+        if (input.isPressed(Engine::Key::eMouseMiddle)) {
+            auto diff = input.getMouseDelta();
+
+            rotateYaw = rotateYaw + diff.x * lookSensitivity;
+            rotatePitch = std::clamp(rotatePitch - diff.y * lookSensitivity, -89.0f, 0.0f);
+
+            mainCamera->rotateToUsingTime(rotateYaw, rotatePitch, 0.35);
+        } else {
+            panRotate = PanRotateState::None;
+            input.releaseMouse();
+            input.setMousePos(cursorOriginal);
+        }
+    }
+
+//    auto mouseDelta = input.getMouseDelta();
 
     // TODO: Use mouse drag to set these
 //    activeCamera->setYaw(activeCamera->getYaw() + mouseDelta.x * lookSensitivity);
 //    activeCamera->setPitch(activeCamera->getPitch() - mouseDelta.y * lookSensitivity);
 
     // Movement
+//
+//    glm::vec3 forwardPlane = {
+//        sin(glm::radians(activeCamera->getYaw())),
+//        cos(glm::radians(activeCamera->getYaw())),
+//        0
+//    };
+//    glm::vec3 rightPlane = {
+//        cos(glm::radians(activeCamera->getYaw())),
+//        -sin(glm::radians(activeCamera->getYaw())),
+//        0
+//    };
+//
+//    glm::vec3 inputVector = {};
+////    // Mouse based panning
+////    if (input.wasPressed(Engine::Key::eMouseRight)) {
+////        isPanningCamera = true;
+////        panStart = input.getMousePos();
+////    }
+////
+////    if (input.isPressed(Engine::Key::eMouseRight) && isPanningCamera) {
+////        auto delta = glm::normalize(input.getMousePos() - panStart);
+////
+////        panVector += delta;
+////        auto len = glm::length(panVector);
+////        if (len > moveSensitivity) {
+////            panVector = (panVector / len) * moveSensitivity;
+////        }
+////    }
+//
+//    // Get movement input
+//    bool hasInput = false;
+//    if (input.isPressed(Engine::Key::eW)) {
+//        inputVector = forwardPlane;
+//        hasInput = true;
+//    } else if (input.isPressed(Engine::Key::eS)) {
+//        inputVector = -forwardPlane;
+//        hasInput = true;
+//    }
+//
+//    if (input.isPressed(Engine::Key::eD)) {
+//        inputVector += rightPlane;
+//        hasInput = true;
+//    } else if (input.isPressed(Engine::Key::eA)) {
+//        inputVector += -rightPlane;
+//        hasInput = true;
+//    }
+//
+////    if (hasInput) {
+//////        panVector = {};
+////    } else {
+////        inputVector = forwardPlane *
+////    }
+//
+//    if (input.isPressed(Engine::Key::eSpace)) {
+//        inputVector.z = 1;
+//    }
+//    if (input.isPressed(Engine::Key::eLeftControl)) {
+//        inputVector.z = -1;
+//    }
+//
+//    if (glm::length(inputVector) > 0) {
+//        float speed;
+//        if (isMainCameraActive()) {
+//            speed = moveSensitivity;
+//        } else {
+//            speed = moveSensitivityDebug;
+//        }
+//
+//        if (inputVector.x != 0 || inputVector.y != 0) {
+//            glm::vec3 flatVec(inputVector);
+//            flatVec.z = 0;
+//
+//            auto inputZ = inputVector.z;
+//
+//            inputVector = glm::normalize(flatVec) * speed;
+//            inputVector.z = inputZ * speed;
+//        } else {
+//            inputVector.z *= speed;
+//        }
+//
+//        activeCamera->setPosition(activeCamera->getPosition() + inputVector);
+//    }
 
-    glm::vec3 forwardPlane = {
-        sin(glm::radians(activeCamera->getYaw())),
-        cos(glm::radians(activeCamera->getYaw())),
-        0
-    };
-    glm::vec3 rightPlane = {
-        cos(glm::radians(activeCamera->getYaw())),
-        -sin(glm::radians(activeCamera->getYaw())),
-        0
-    };
+//    panVector *= 0.6;
 
-    // Get movement input
-    glm::vec3 inputVector = {};
-    if (input.isPressed(Engine::Key::eW)) {
-        inputVector = forwardPlane;
-    } else if (input.isPressed(Engine::Key::eS)) {
-        inputVector = -forwardPlane;
-    }
-
-    if (input.isPressed(Engine::Key::eD)) {
-        inputVector += rightPlane;
-    } else if (input.isPressed(Engine::Key::eA)) {
-        inputVector += -rightPlane;
-    }
-
-    if (input.isPressed(Engine::Key::eSpace)) {
-        inputVector.z = 1;
-    }
-    if (input.isPressed(Engine::Key::eLeftControl)) {
-        inputVector.z = -1;
-    }
-
-    if (glm::length(inputVector) > 0) {
-        float speed;
-        if (isMainCameraActive()) {
-            speed = moveSensitivity;
-        } else {
-            speed = moveSensitivityDebug;
-        }
-
-        if (inputVector.x != 0 || inputVector.y != 0) {
-            glm::vec3 flatVec(inputVector);
-            flatVec.z = 0;
-
-            auto inputZ = inputVector.z;
-
-            inputVector = glm::normalize(flatVec) * speed;
-            inputVector.z = inputZ * speed;
-        } else {
-            inputVector.z *= speed;
-        }
-
-        activeCamera->setPosition(activeCamera->getPosition() + inputVector);
-    }
+    mainCamera->update(deltaSeconds);
 }
 
 void Scene::drawGizmos() {
-    if (!isMainCameraRendered()) {
-        // Draw main camera location
-        auto pos = mainCamera->getPosition();
-        glm::vec3 size { 1, 1, 1 };
-
-        debugSubsystem->debugDrawBox(
-            pos - size,
-            pos + size,
-            0xFF0000FF
-        );
-
-        debugSubsystem->debugDrawLine(
-            pos,
-            pos + mainCamera->getForward() * 3.0f,
-            0xFF0000FF
-        );
-
-        Engine::draw(mainCamera->getFrustum());
-    }
+//    if (!isMainCameraRendered()) {
+//        // Draw main camera location
+//        auto pos = mainCamera->getPosition();
+//        glm::vec3 size { 1, 1, 1 };
+//
+//        debugSubsystem->debugDrawBox(
+//            pos - size,
+//            pos + size,
+//            0xFF0000FF
+//        );
+//
+//        debugSubsystem->debugDrawLine(
+//            pos,
+//            pos + mainCamera->getForward() * 3.0f,
+//            0xFF0000FF
+//        );
+//
+//        Engine::draw(mainCamera->getFrustum());
+//    }
 
     // Axis gizmo
     debugSubsystem->debugDrawLine(
