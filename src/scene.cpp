@@ -218,6 +218,35 @@ void Scene::handleCameraMovement(double deltaSeconds) {
         }
     }
 
+    // Raycast terrain
+    glm::vec3 pos, dir;
+    if (hasFixedRay) {
+        pos = fixedRayOrigin;
+        dir = fixedRayDir;
+    } else {
+        auto mousePos = input.getMousePos();
+        auto bounds = engine.getScreenBounds();
+
+        mousePos.x = (mousePos.x / bounds.width()) * 2 - 1;
+        mousePos.y = (mousePos.y / bounds.height()) * 2 - 1;
+
+        mainCamera->getCamera().rayFromCoord(mousePos, pos, dir);
+    }
+
+    if (input.wasPressed(Engine::Key::eSpace)) {
+        if (!hasFixedRay) {
+            fixedRayOrigin = pos;
+            fixedRayDir = dir;
+        }
+
+        hasFixedRay = !hasFixedRay;
+    }
+
+    auto hitPos = cdlod->raycastTerrain(pos, dir);
+    if (hitPos) {
+        Engine::draw(Engine::BoundingSphere(*hitPos, 1), 0xFFFFFF00);
+    }
+
 //    auto mouseDelta = input.getMouseDelta();
 
     // TODO: Use mouse drag to set these

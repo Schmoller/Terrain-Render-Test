@@ -39,6 +39,10 @@ private:
     float rotateYaw { 0 };
     float rotatePitch { 0 };
 
+    bool hasFixedRay { false };
+    glm::vec3 fixedRayOrigin;
+    glm::vec3 fixedRayDir;
+
 //    std::unique_ptr<Engine::FPSCamera> mainCamera;
     std::unique_ptr<Engine::FPSCamera> debugCamera;
 

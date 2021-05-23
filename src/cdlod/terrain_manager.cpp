@@ -4,7 +4,6 @@
 #include <iostream>
 #include "../utils/instance_buffer.inl"
 #include <imgui.h>
-#include <iostream>
 #include <array>
 
 namespace Terrain::CDLOD {
@@ -408,6 +407,42 @@ float TerrainManager::getHeightAt(float x, float y) const {
 
     return heightmap->getHeightAt((x - offset.x) / size.x * heightmap->getWidth(),
         (y - offset.y) / size.y * heightmap->getHeight());
+}
+
+std::optional<glm::vec3>
+TerrainManager::raycastTerrain(const glm::vec3 &origin, const glm::vec3 &direction) const {
+    auto box = getTerrainBounds();
+
+    glm::vec3 enter, exit;
+    if (!box.intersectsRay(origin, direction, enter, exit)) {
+        return {};
+    }
+
+    // Adjust into heightmap space
+    auto size = lodTree->getTerrainSize();
+    auto offset = lodTree->getTerrainOffset();
+    glm::vec2 heightmapScale(1 / size.x * heightmap->getWidth(), 1 / size.y * heightmap->getHeight());
+
+    float maxDist = glm::length(exit - enter);
+
+    auto xScale = box.width() / static_cast<float>(heightmap->getWidth());
+    auto yScale = box.height() / static_cast<float>(heightmap->getHeight());
+
+    auto step = std::min(xScale, yScale);
+
+    for (float dist = 0.0f; dist < maxDist; dist += step) {
+        auto coord = enter + direction * dist;
+        glm::vec2 coordHM = (glm::vec2(coord.x, coord.y) - offset) * heightmapScale;
+
+        float height = heightmap->getHeightAt(coordHM.x, coordHM.y);
+
+        if (height >= coord.z) {
+            coord.z = height;
+            return coord;
+        }
+    }
+
+    return {};
 }
 
 

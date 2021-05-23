@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <tech-core/mesh.hpp>
 #include <tech-core/engine.hpp>
 #include <tech-core/subsystem/base.hpp>
@@ -44,6 +46,9 @@ public:
 
     float getHeightAt(const glm::vec2 &coords) const { return getHeightAt(coords.x, coords.y); };
     float getHeightAt(float x, float y) const;
+
+    std::optional<glm::vec3>
+    raycastTerrain(const glm::vec3 &origin, const glm::vec3 &direction) const;
 
     void drawGUI();
 
