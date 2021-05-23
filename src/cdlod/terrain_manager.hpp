@@ -38,6 +38,13 @@ public:
 
     uint32_t getDebugModeCount() { return 1; }
 
+    const glm::vec2 &getTerrainSize() const { return lodTree->getTerrainSize(); };
+
+    Engine::BoundingBox getTerrainBounds() const { return lodTree->getTerrainBounds(); };
+
+    float getHeightAt(const glm::vec2 &coords) const { return getHeightAt(coords.x, coords.y); };
+    float getHeightAt(float x, float y) const;
+
     void drawGUI();
 
     // For engine use

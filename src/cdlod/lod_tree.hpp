@@ -29,6 +29,12 @@ public:
         return nodeSize;
     }
 
+    const glm::vec2 &getTerrainSize() const { return size; };
+
+    const glm::vec2 &getTerrainOffset() const { return offset; };
+
+    Engine::BoundingBox getTerrainBounds() const;
+
     void walkTree(
         const glm::vec3 &origin, const Engine::Frustum &frustum, InstanceBuffer<MeshInstanceData> &fullTiles,
         InstanceBuffer<MeshInstanceData> &halfTiles

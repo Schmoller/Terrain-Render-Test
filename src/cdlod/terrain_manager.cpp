@@ -402,5 +402,13 @@ void TerrainManager::drawGUI() {
     ImGui::Unindent();
 }
 
+float TerrainManager::getHeightAt(float x, float y) const {
+    auto &size = lodTree->getTerrainSize();
+    auto &offset = lodTree->getTerrainOffset();
+
+    return heightmap->getHeightAt((x - offset.x) / size.x * heightmap->getWidth(),
+        (y - offset.y) / size.y * heightmap->getHeight());
+}
+
 
 }

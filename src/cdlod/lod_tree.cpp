@@ -276,6 +276,12 @@ void LODTree::doMinMax(
     auto &data = nodes[id];
     data.minZ = minimum;
     data.maxZ = maximum;
+}
+
+Engine::BoundingBox LODTree::getTerrainBounds() const {
+    auto rootData = nodes[1]; // 1 is root node
+
+    return { offset.x, offset.y, rootData.minZ, offset.x + size.x, offset.y + size.y, rootData.maxZ };
 };
 
 

@@ -95,3 +95,50 @@ void Heightmap::transferImage(Engine::RenderEngine &engine) {
 
     engine.getTaskManager().submitTask(std::move(task));
 }
+
+float Heightmap::getHeightAt(float x, float y) const {
+    if (x < 0 || y < 0 || x > width || y > height) {
+        return std::numeric_limits<float>::infinity();
+    }
+
+    auto xLow = static_cast<uint32_t>(x);
+    auto yLow = static_cast<uint32_t>(y);
+    auto xFrac = x - static_cast<float>(xLow);
+    auto yFrac = y - static_cast<float>(yLow);
+
+    // Sample 4 values
+    float minXminY = getHeightAt(xLow, yLow);
+    float maxXminY;
+    float minXmaxY;
+    float maxXmaxY;
+
+    if (xLow + 1 < width) {
+        maxXminY = getHeightAt(xLow + 1, yLow);
+    } else {
+        maxXminY = minXminY;
+    }
+    if (yLow + 1 < height) {
+        minXmaxY = getHeightAt(xLow, yLow + 1);
+        if (xLow + 1 < width) {
+            maxXmaxY = getHeightAt(xLow + 1, yLow + 1);
+        } else {
+            maxXmaxY = minXmaxY;
+        }
+    } else {
+        minXmaxY = minXminY;
+        maxXmaxY = maxXminY;
+    }
+
+    // Interpolate
+    float y1 = minXminY * (1 - xFrac) + maxXminY * xFrac;
+    float y2 = minXmaxY * (1 - xFrac) + maxXmaxY * xFrac;
+
+    return y1 * (1 - yFrac) + y2 * yFrac;
+}
+
+float Heightmap::getHeightAt(uint32_t x, uint32_t y) const {
+    auto index = x + y * width;
+
+    auto newScale = maxElevation - minElevation;
+    return static_cast<float>(bitmap[index]) / HEIGHTMAP_SCALE * newScale + minElevation;
+}

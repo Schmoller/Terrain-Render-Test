@@ -20,6 +20,9 @@ public:
 
     vk::ImageView getImage() const { return bitmapImage->imageView(); }
 
+    float getHeightAt(uint32_t x, uint32_t y) const;
+    float getHeightAt(float x, float y) const;
+
     void calculateMinMax(
         uint32_t startX, uint32_t endX, uint32_t startY, uint32_t endY, float &minimum, float &maximum
     );
