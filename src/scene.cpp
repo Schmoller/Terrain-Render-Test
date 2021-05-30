@@ -39,11 +39,14 @@ void Scene::initialize() {
     this->debugSubsystem = engine.getSubsystem(Engine::Subsystem::DebugSubsystem::ID);
 
     initializeHeightmap();
+    painter = std::make_unique<TerrainPainter>(engine);
+    painter->initialize();
 
     // initialize terrain algorithms
     cdlod = engine.getSubsystem(Terrain::CDLOD::TerrainManager::ID);
     cdlod->setCamera(&mainCamera->getCamera());
     cdlod->setHeightmap(*heightmap);
+    cdlod->setTerrainPainter(*painter);
 
     initTextures();
 }
@@ -149,6 +152,21 @@ void Scene::handleControls() {
     }
     if (this->inputManager->wasPressed(Engine::Key::e4)) {
         cdlod->setDebugMode(cdlod->getDebugMode() + 1);
+    }
+    if (this->inputManager->wasPressed(Engine::Key::e5)) {
+        glm::vec3 pos, dir;
+        auto mousePos = engine.getInputManager().getMousePos();
+        auto bounds = engine.getScreenBounds();
+
+        mousePos.x = (mousePos.x / bounds.width()) * 2 - 1;
+        mousePos.y = (mousePos.y / bounds.height()) * 2 - 1;
+
+        mainCamera->getCamera().rayFromCoord(mousePos, pos, dir);
+
+        auto hitPos = cdlod->raycastTerrain(pos, dir);
+        if (hitPos) {
+            painter->paint({ pos.x, pos.y }, 100, 1);
+        }
     }
 }
 

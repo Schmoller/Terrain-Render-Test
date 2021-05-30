@@ -9,6 +9,7 @@
 #include "../heightmap.hpp"
 #include "lod_tree.hpp"
 #include "../utils/instance_buffer.hpp"
+#include "../terrain_painter.hpp"
 
 namespace Terrain::CDLOD {
 namespace _E = Engine;
@@ -19,6 +20,7 @@ public:
 
     void setCamera(Engine::Camera *);
     void setHeightmap(Heightmap &);
+    void setTerrainPainter(TerrainPainter &);
 
     void invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2 &max);
 
@@ -65,6 +67,7 @@ private:
     Engine::RenderEngine *engine { nullptr };
     Engine::Camera *camera { nullptr };
     Heightmap *heightmap { nullptr };
+    TerrainPainter *painter { nullptr };
 
     bool wireframe { false };
 
@@ -95,9 +98,6 @@ private:
     vk::Device device;
     std::unique_ptr<_E::Pipeline> pipeline;
     std::unique_ptr<_E::Pipeline> pipelineWireframe;
-    vk::DescriptorSetLayout descriptorLayout;
-    vk::DescriptorPool descriptorPool;
-    std::vector<vk::DescriptorSet> descriptorSets;
     uint32_t swapChainImages { 0 };
 
     uint32_t textureArray { 0xFFFFFFFF };

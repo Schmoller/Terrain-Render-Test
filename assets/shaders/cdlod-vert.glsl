@@ -11,7 +11,7 @@ layout(binding = 0) uniform CameraUBO {
     mat4 proj;
 } cam;
 
-layout(binding = 1) uniform sampler2D terrainSampler;
+layout(set = 2, binding = 1) uniform sampler2D terrainSampler;
 layout(push_constant) uniform TerrainUBO {
     float heightOffset;
     float heightScale;
@@ -35,6 +35,7 @@ layout(location = 7) in vec2 meshMorphRange;// x = morphStart, y = morphDist (en
 layout(location = 0) out vec4 fragColour;
 layout(location = 1) out vec3 fragNormal;
 layout(location = 2) out vec3 fragTexCoord;
+layout(location = 3) out vec2 fragHeightmapCoord;
 
 vec2 morphVertex(vec2 meshVertexCoord, vec2 worldVertexCoord, float morph) {
     vec2 fracPart = (fract(meshVertexCoord * terrain.meshMorphConstants.x) * terrain.meshMorphConstants.y) * meshScale;
@@ -70,6 +71,7 @@ void main() {
     fragNormal = inNormal;
 
     vec2 texCoord = ((vertexPos2D / terrain.halfSize) + vec2(0.5, 0.5)) * 100;
+    fragHeightmapCoord = texCoord;
     fragTexCoord = vec3(texCoord, meshTextureIndex);
 
     // Debug features

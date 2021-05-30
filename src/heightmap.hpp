@@ -20,6 +20,8 @@ public:
 
     vk::ImageView getImage() const { return bitmapImage->imageView(); }
 
+    std::shared_ptr<Engine::Image> getImageTemp() const { return bitmapImage; }
+
     float getHeightAt(uint32_t x, uint32_t y) const;
     float getHeightAt(float x, float y) const;
 
@@ -35,7 +37,7 @@ private:
     float maxElevation { 1024 };
 
     std::vector<uint16_t> bitmap;
-    std::unique_ptr<Engine::Image> bitmapImage;
+    std::shared_ptr<Engine::Image> bitmapImage;
 
     void transferImage(Engine::RenderEngine &);
 };

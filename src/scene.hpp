@@ -8,6 +8,7 @@
 #include <chrono>
 #include "utils/circular_buffer.hpp"
 #include "utils/overhead_camera.hpp"
+#include "terrain_painter.hpp"
 
 const uint32_t MaxFrameTimePoints = 200;
 
@@ -56,6 +57,7 @@ private:
     CircularBuffer<MaxFrameTimePoints> frameTimes;
 
     std::unique_ptr<Heightmap> heightmap;
+    std::unique_ptr<TerrainPainter> painter;
 
     // Settings
     bool wireframe { false };

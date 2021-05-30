@@ -1,5 +1,6 @@
 #include "heightmap.hpp"
 #include <tech-core/engine.hpp>
+#include <tech-core/task.hpp>
 #include <stb_image.h>
 
 const float HEIGHTMAP_SCALE = 65535.0f;

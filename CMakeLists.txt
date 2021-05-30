@@ -8,7 +8,7 @@ add_subdirectory(./libs/tech-core)
 include_directories(./libs/tech-core/include ./libs/tech-core/libs/vk-mem-alloc/include ./libs/tech-core/libs/stb ./libs/tech-core/libs/imgui)
 include_directories(./libs/perlin-noise)
 
-add_executable(terrain_test src/main.cpp src/scene.cpp src/scene.hpp src/cdlod/terrain_manager.cpp src/cdlod/terrain_manager.hpp src/cdlod/structures.hpp src/cdlod/lod_tree.hpp src/cdlod/lod_tree.cpp src/heightmap.cpp src/heightmap.hpp src/utils/overhead_camera.cpp src/utils/circular_buffer.hpp src/utils/easing.hpp)
+add_executable(terrain_test src/main.cpp src/scene.cpp src/scene.hpp src/cdlod/terrain_manager.cpp src/cdlod/terrain_manager.hpp src/cdlod/structures.hpp src/cdlod/lod_tree.hpp src/cdlod/lod_tree.cpp src/heightmap.cpp src/heightmap.hpp src/utils/overhead_camera.cpp src/utils/circular_buffer.hpp src/utils/easing.hpp src/terrain_painter.cpp src/terrain_painter.hpp)
 target_link_libraries(terrain_test tech)
 
 add_executable(genheightmap tools/heightmap_gen/main.cpp)

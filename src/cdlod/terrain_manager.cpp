@@ -1,5 +1,7 @@
 #include "terrain_manager.hpp"
 #include <tech-core/vertex.hpp>
+#include <tech-core/camera.hpp>
+#include <tech-core/pipeline.hpp>
 #include <vector>
 #include <iostream>
 #include "../utils/instance_buffer.inl"
@@ -121,26 +123,6 @@ void TerrainManager::initialiseResources(
 ) {
     this->engine = &engine;
     this->device = device;
-    std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {{
-        { // Camera binding
-            0, // binding
-            vk::DescriptorType::eUniformBuffer,
-            1, // count
-            vk::ShaderStageFlagBits::eVertex
-        },
-        { // Heightmap sampler binding
-            1,
-            vk::DescriptorType::eCombinedImageSampler,
-            1,
-            vk::ShaderStageFlagBits::eVertex
-        }
-    }};
-
-    descriptorLayout = device.createDescriptorSetLayout(
-        {
-            {}, static_cast<uint32_t>(bindings.size()), bindings.data()
-        }
-    );
 
     vk::SamplerCreateInfo samplerCreateInfo(
         {}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear,
@@ -171,116 +153,33 @@ void TerrainManager::initialiseSwapChainResources(
     vk::Device device, Engine::RenderEngine &engine, uint32_t swapChainImages
 ) {
     this->swapChainImages = swapChainImages;
-    // Descriptor pool for allocating the descriptors
-    std::array<vk::DescriptorPoolSize, 2> poolSizes = {{
-        {
-            vk::DescriptorType::eUniformBuffer,
-            swapChainImages
-        },
-        {
-            vk::DescriptorType::eCombinedImageSampler,
-            swapChainImages
-        }
-    }};
 
-    descriptorPool = device.createDescriptorPool(
-        {
-            {},
-            swapChainImages,
-            static_cast<uint32_t>(poolSizes.size()), poolSizes.data()
-        }
-    );
+    auto builder = engine.createPipeline()
+        .withVertexShader("assets/shaders/cdlod-vert.spv")
+        .withFragmentShader("assets/shaders/cdlod-frag.spv")
+        .withGeometryType(Engine::PipelineGeometryType::Polygons)
+        .withVertexAttributeDescriptions(Engine::Vertex::getAttributeDescriptions())
+        .withVertexBindingDescription(Engine::Vertex::getBindingDescription())
+        .withVertexAttributeDescriptions(MeshInstanceData::getAttributeDescriptions())
+        .withVertexBindingDescription(MeshInstanceData::getBindingDescription())
+        .withPushConstants<TerrainUniform>(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+        .bindCamera(0, 0)
+        .bindTextures(1, 2);
 
-    // Descriptor sets
-    std::vector<vk::DescriptorSetLayout> layouts(swapChainImages, descriptorLayout);
-
-    descriptorSets = device.allocateDescriptorSets(
-        {
-            descriptorPool,
-            static_cast<uint32_t>(layouts.size()), layouts.data()
-        }
-    );
-
-    // Assign buffers to DS'
-    for (uint32_t imageIndex = 0; imageIndex < swapChainImages; ++imageIndex) {
-        auto cameraUbo = engine.getCameraDBI(imageIndex);
-
-        if (heightmap) {
-            vk::DescriptorImageInfo heightmapImage(
-                heightmapSampler,
-                heightmap->getImage(),
-                vk::ImageLayout::eShaderReadOnlyOptimal
-            );
-
-            std::array<vk::WriteDescriptorSet, 2> descriptorWrites = {{
-                { // Camera UBO
-                    descriptorSets[imageIndex],
-                    0, // Binding
-                    0, // Array element
-                    1, // Count
-                    vk::DescriptorType::eUniformBuffer,
-                    nullptr,
-                    &cameraUbo
-                },
-                { // Height map sampler
-                    descriptorSets[imageIndex],
-                    1, // Binding
-                    0, // Array element
-                    1, // Count
-                    vk::DescriptorType::eCombinedImageSampler,
-                    &heightmapImage
-                }
-            }};
-
-            device.updateDescriptorSets(descriptorWrites, {});
-        } else {
-            std::array<vk::WriteDescriptorSet, 1> descriptorWrites = {{
-                { // Camera UBO
-                    descriptorSets[imageIndex],
-                    0, // Binding
-                    0, // Array element
-                    1, // Count
-                    vk::DescriptorType::eUniformBuffer,
-                    nullptr,
-                    &cameraUbo
-                }
-            }};
-
-            device.updateDescriptorSets(descriptorWrites, {});
-        }
+    if (heightmap) {
+        builder.bindSampledImage(2, 1, heightmap->getImageTemp(), vk::ShaderStageFlagBits::eVertex, heightmapSampler);
+    } else {
+        builder.bindSampledImage(2, 1, vk::ShaderStageFlagBits::eVertex, heightmapSampler);
     }
 
-    pipeline = engine.createPipeline()
-        .withVertexShader("assets/shaders/cdlod-vert.spv")
-        .withFragmentShader("assets/shaders/cdlod-frag.spv")
-        .withGeometryType(Engine::PipelineGeometryType::Polygons)
-        .withVertexAttributeDescriptions(Engine::Vertex::getAttributeDescriptions())
-        .withVertexBindingDescription(Engine::Vertex::getBindingDescription())
-        .withVertexAttributeDescriptions(MeshInstanceData::getAttributeDescriptions())
-        .withVertexBindingDescription(MeshInstanceData::getBindingDescription())
-        .withPushConstants<TerrainUniform>(vk::ShaderStageFlagBits::eVertex)
-        .withDescriptorSet(descriptorLayout)
-        .withDescriptorSet(engine.getTextureManager().getLayout())
-        .build();
+    // TODO: Insert the splat texture here
 
-    pipelineWireframe = engine.createPipeline()
-        .withVertexShader("assets/shaders/cdlod-vert.spv")
-        .withFragmentShader("assets/shaders/cdlod-frag.spv")
-        .withGeometryType(Engine::PipelineGeometryType::Polygons)
-        .withVertexAttributeDescriptions(Engine::Vertex::getAttributeDescriptions())
-        .withVertexBindingDescription(Engine::Vertex::getBindingDescription())
-        .withVertexAttributeDescriptions(MeshInstanceData::getAttributeDescriptions())
-        .withVertexBindingDescription(MeshInstanceData::getBindingDescription())
-        .withPushConstants<TerrainUniform>(vk::ShaderStageFlagBits::eVertex)
-        .withDescriptorSet(descriptorLayout)
-        .withDescriptorSet(engine.getTextureManager().getLayout())
-        .withFillMode(Engine::FillMode::Wireframe)
-        .build();
+    pipeline = builder.build();
+    pipelineWireframe = builder.withFillMode(Engine::FillMode::Wireframe).build();
 }
 
 void TerrainManager::cleanupResources(vk::Device device, Engine::RenderEngine &engine) {
     device.destroy(heightmapSampler);
-    device.destroyDescriptorSetLayout(descriptorLayout);
 
     fullResTiles.reset();
     halfResTiles.reset();
@@ -289,7 +188,6 @@ void TerrainManager::cleanupResources(vk::Device device, Engine::RenderEngine &e
 void TerrainManager::cleanupSwapChainResources(vk::Device device, Engine::RenderEngine &engine) {
     pipeline.reset();
     pipelineWireframe.reset();
-    device.destroyDescriptorPool(descriptorPool);
 }
 
 void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_t activeImage) {
@@ -300,20 +198,15 @@ void TerrainManager::writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_
         currentPipeline = pipeline.get();
     }
 
-    currentPipeline->bind(commandBuffer);
-
-    std::array<vk::DescriptorSet, 1> globalDescriptors = {
-        descriptorSets[activeImage]
-    };
-    currentPipeline->bindDescriptorSets(
-        commandBuffer, 0, static_cast<uint32_t>(globalDescriptors.size()), globalDescriptors.data(), 0, nullptr
-    );
+    currentPipeline->bind(commandBuffer, activeImage);
 
     // Texture binding
     auto binding = engine->getTextureManager().getBinding(textureArray, textureSamplerId, textureSampler);
     currentPipeline->bindDescriptorSets(commandBuffer, 1, 1, &binding, 0, nullptr);
 
-    currentPipeline->push(commandBuffer, vk::ShaderStageFlagBits::eVertex, terrainUniform);
+    currentPipeline->push(
+        commandBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, terrainUniform
+    );
     if (renderFullRes) {
         fullResTiles->draw(commandBuffer, *terrainMesh);
     }
@@ -349,25 +242,37 @@ void TerrainManager::setHeightmap(Heightmap &heightmap) {
         vk::ImageLayout::eShaderReadOnlyOptimal
     );
 
-    // Assign the heightmap image
-    for (uint32_t imageIndex = 0; imageIndex < swapChainImages; ++imageIndex) {
-        std::array<vk::WriteDescriptorSet, 1> descriptorWrites = {{
-            { // Height map sampler
-                descriptorSets[imageIndex],
-                1, // Binding
-                0, // Array element
-                1, // Count
-                vk::DescriptorType::eCombinedImageSampler,
-                &heightmapImage
-            }
-        }};
-
-        device.updateDescriptorSets(descriptorWrites, {});
-    }
+    pipeline->bindImage(2, 1, heightmap.getImageTemp());
 
     terrainUniform.heightOffset = heightmap.getMinElevation();
     terrainUniform.heightScale = heightmap.getMaxElevation() - heightmap.getMinElevation();
     terrainUniform.terrainHalfSize = { heightmap.getWidth() / 2.0f, heightmap.getHeight() / 2.0f };
+}
+
+void TerrainManager::setTerrainPainter(TerrainPainter &terrainPainter) {
+    painter = &terrainPainter;
+//
+//    vk::DescriptorImageInfo descriptorImage(
+//        heightmapSampler,
+//        terrainPainter.getSplatMap().imageView(),
+//        vk::ImageLayout::eGeneral
+//    );
+//
+//    // Assign the heightmap image
+//    for (uint32_t imageIndex = 0; imageIndex < swapChainImages; ++imageIndex) {
+//        std::array<vk::WriteDescriptorSet, 1> descriptorWrites = {{
+//            { // Height map sampler
+//                descriptorSets[imageIndex],
+//                3, // Binding
+//                0, // Array element
+//                1, // Count
+//                vk::DescriptorType::eCombinedImageSampler,
+//                &descriptorImage
+//            }
+//        }};
+//
+//        device.updateDescriptorSets(descriptorWrites, {});
+//    }
 }
 
 void TerrainManager::invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2 &max) {
@@ -376,7 +281,7 @@ void TerrainManager::invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2
 }
 
 void TerrainManager::drawGUI() {
-    ImGui::Combo("Debug Mode", reinterpret_cast<int *>(&terrainUniform.debugMode), "None\0Range\0");
+    ImGui::Combo("Debug Mode", reinterpret_cast<int *>(&terrainUniform.debugMode), "None\0Range\0Splat Map\0");
 
     ImGui::Spacing();
     if (ImGui::Combo("Mesh Size", &meshSizeIndex, meshSizeNames.data(), meshSizeNames.size())) {
