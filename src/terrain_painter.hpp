@@ -12,7 +12,7 @@ public:
 
     void paint(const glm::vec2 &origin, float radius, int texturePlaceholder);
 
-    Engine::Image &getSplatMap() const { return *splatMap; };
+    std::shared_ptr<Engine::Image> getSplatMap() const { return splatMap; };
 private:
     Engine::RenderEngine &engine;
 

@@ -19,13 +19,13 @@ layout(push_constant) uniform TerrainUBO {
     uint debugMode;
 } terrain;
 
-//layout(binding = 3) uniform sampler2D splatMap;
+layout(set = 2, binding = 3) uniform sampler2D splatMap;
 
 
 void main() {
     if (terrain.debugMode == 2) {
-        //        outColor = texture(splatMap, fragHeightmapCoord);
-        outColor = vec4(0, 0, 1, 1);
+        outColor = texture(splatMap, fragHeightmapCoord);
+        //        outColor = vec4(0, 0, 1, 1);
     } else {
         outColor = texture(texSampler, fragTexCoord) * fragColour;
     }

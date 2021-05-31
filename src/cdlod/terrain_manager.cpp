@@ -172,7 +172,14 @@ void TerrainManager::initialiseSwapChainResources(
         builder.bindSampledImage(2, 1, vk::ShaderStageFlagBits::eVertex, heightmapSampler);
     }
 
-    // TODO: Insert the splat texture here
+    if (painter) {
+        builder.bindSampledImage(
+            2, 3, painter->getSplatMap(), vk::ShaderStageFlagBits::eFragment, vk::ImageLayout::eGeneral,
+            heightmapSampler
+        );
+    } else {
+        builder.bindSampledImage(2, 3, vk::ShaderStageFlagBits::eFragment, vk::ImageLayout::eGeneral, heightmapSampler);
+    }
 
     pipeline = builder.build();
     pipelineWireframe = builder.withFillMode(Engine::FillMode::Wireframe).build();
@@ -251,6 +258,7 @@ void TerrainManager::setHeightmap(Heightmap &heightmap) {
 
 void TerrainManager::setTerrainPainter(TerrainPainter &terrainPainter) {
     painter = &terrainPainter;
+    pipeline->bindImage(2, 3, painter->getSplatMap());
 //
 //    vk::DescriptorImageInfo descriptorImage(
 //        heightmapSampler,
@@ -348,6 +356,10 @@ TerrainManager::raycastTerrain(const glm::vec3 &origin, const glm::vec3 &directi
     }
 
     return {};
+}
+
+void TerrainManager::writeBarriers(vk::CommandBuffer commandBuffer) {
+    painter->getSplatMap()->transition(commandBuffer, vk::ImageLayout::eGeneral, true);
 }
 
 

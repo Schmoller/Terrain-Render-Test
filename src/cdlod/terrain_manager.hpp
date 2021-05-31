@@ -62,6 +62,7 @@ public:
     void writeFrameCommands(vk::CommandBuffer commandBuffer, uint32_t activeImage);
     void prepareFrame(uint32_t activeImage) override;
     void afterFrame(uint32_t activeImage);
+    void writeBarriers(vk::CommandBuffer commandBuffer) override;
 
 private:
     Engine::RenderEngine *engine { nullptr };
