@@ -25,8 +25,17 @@ layout(set = 2, binding = 3) uniform sampler2D splatMap;
 void main() {
     if (terrain.debugMode == 2) {
         outColor = texture(splatMap, fragHeightmapCoord);
+        //        outColor = vec4(fragHeightmapCoord, 0, 1);
         //        outColor = vec4(0, 0, 1, 1);
     } else {
-        outColor = texture(texSampler, fragTexCoord) * fragColour;
+        vec4 tex1 = texture(texSampler, vec3(fragTexCoord.xy, 0));
+        vec4 tex2 = texture(texSampler, vec3(fragTexCoord.xy, 1));
+        vec4 tex3 = texture(texSampler, vec3(fragTexCoord.xy, 2));
+        vec4 tex4 = texture(texSampler, vec3(fragTexCoord.xy, 3));
+        vec4 tex5 = texture(texSampler, vec3(fragTexCoord.xy, 4));
+
+        vec4 splat = texture(splatMap, fragHeightmapCoord.xy);
+        outColor = tex1 * splat.r + tex2 * splat.g + tex3 * splat.b + tex4 * splat.a + tex5 * (1 - (splat.r + splat.g + splat.b + splat.a));
+        outColor *= fragColour;
     }
 }

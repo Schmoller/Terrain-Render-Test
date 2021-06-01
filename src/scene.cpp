@@ -48,6 +48,8 @@ void Scene::initialize() {
     cdlod->setHeightmap(*heightmap);
     cdlod->setTerrainPainter(*painter);
 
+    painter->setWorldSize(cdlod->getTerrainSize());
+
     initTextures();
 }
 
@@ -153,7 +155,7 @@ void Scene::handleControls() {
     if (this->inputManager->wasPressed(Engine::Key::e4)) {
         cdlod->setDebugMode(cdlod->getDebugMode() + 1);
     }
-    if (this->inputManager->wasPressed(Engine::Key::e5)) {
+    if (this->inputManager->isPressed(Engine::Key::eMouseLeft)) {
         glm::vec3 pos, dir;
         auto mousePos = engine.getInputManager().getMousePos();
         auto bounds = engine.getScreenBounds();
@@ -165,7 +167,7 @@ void Scene::handleControls() {
 
         auto hitPos = cdlod->raycastTerrain(pos, dir);
         if (hitPos) {
-            painter->paint({ pos.x, pos.y }, 100, 1);
+            painter->paint({ hitPos->x, hitPos->y }, 10, painter->getBrushTexture());
         }
     }
 }
@@ -405,8 +407,24 @@ void Scene::initializeHeightmap() {
 }
 
 void Scene::initTextures() {
-    engine.getTextureManager().createTexture("grass")
-        .fromFile("assets/textures/grass.png")
+    engine.getTextureManager().createTexture("green")
+        .fromFile("assets/textures/green.png")
+        .withMipMode(Engine::MipType::Generate)
+        .build();
+    engine.getTextureManager().createTexture("cyan")
+        .fromFile("assets/textures/cyan.png")
+        .withMipMode(Engine::MipType::Generate)
+        .build();
+    engine.getTextureManager().createTexture("gray")
+        .fromFile("assets/textures/gray.png")
+        .withMipMode(Engine::MipType::Generate)
+        .build();
+    engine.getTextureManager().createTexture("brown")
+        .fromFile("assets/textures/brown.png")
+        .withMipMode(Engine::MipType::Generate)
+        .build();
+    engine.getTextureManager().createTexture("magenta")
+        .fromFile("assets/textures/magenta.png")
         .withMipMode(Engine::MipType::Generate)
         .build();
 }
@@ -427,6 +445,8 @@ void Scene::drawGUI() {
     ImGui::End();
 
     ImGui::ShowDemoWindow();
+
+    painter->drawGui();
 }
 
 void Scene::drawOverlayInfo() {

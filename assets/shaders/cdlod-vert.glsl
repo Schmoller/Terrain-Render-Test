@@ -70,9 +70,9 @@ void main() {
     gl_Position = cam.proj * cam.view * vec4(vertexPos, 1.0);
     fragNormal = inNormal;
 
-    vec2 texCoord = ((vertexPos2D / terrain.halfSize) + vec2(0.5, 0.5)) * 100;
+    vec2 texCoord = ((vertexPos2D / terrain.halfSize) + vec2(0.5, 0.5));
     fragHeightmapCoord = texCoord;
-    fragTexCoord = vec3(texCoord, meshTextureIndex);
+    fragTexCoord = vec3(texCoord* 10, meshTextureIndex);
 
     // Debug features
     if (terrain.debugMode == DM_RANGES) {

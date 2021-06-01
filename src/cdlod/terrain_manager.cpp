@@ -228,7 +228,7 @@ void TerrainManager::afterFrame(uint32_t activeImage) {
 
 void TerrainManager::prepareFrame(uint32_t activeImage) {
     if (textureArray == 0xFFFFFFFF) {
-        auto texture = engine->getTextureManager().getTexture("grass");
+        auto texture = engine->getTextureManager().getTexture("green");
         textureArray = texture->arrayId;
     }
 
@@ -259,28 +259,6 @@ void TerrainManager::setHeightmap(Heightmap &heightmap) {
 void TerrainManager::setTerrainPainter(TerrainPainter &terrainPainter) {
     painter = &terrainPainter;
     pipeline->bindImage(2, 3, painter->getSplatMap());
-//
-//    vk::DescriptorImageInfo descriptorImage(
-//        heightmapSampler,
-//        terrainPainter.getSplatMap().imageView(),
-//        vk::ImageLayout::eGeneral
-//    );
-//
-//    // Assign the heightmap image
-//    for (uint32_t imageIndex = 0; imageIndex < swapChainImages; ++imageIndex) {
-//        std::array<vk::WriteDescriptorSet, 1> descriptorWrites = {{
-//            { // Height map sampler
-//                descriptorSets[imageIndex],
-//                3, // Binding
-//                0, // Array element
-//                1, // Count
-//                vk::DescriptorType::eCombinedImageSampler,
-//                &descriptorImage
-//            }
-//        }};
-//
-//        device.updateDescriptorSets(descriptorWrites, {});
-//    }
 }
 
 void TerrainManager::invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2 &max) {
