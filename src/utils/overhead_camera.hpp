@@ -30,6 +30,7 @@ public:
     void moveToUsingTime(const glm::vec3 &target, double time);
 
     void rotateToUsingTime(float yaw, float pitch, double time);
+    void zoomToUsingTime(float distance, double time);
 
     void update(float deltaSeconds);
 
@@ -67,6 +68,13 @@ private:
 
     double rotateTime { 0 };
     double rotateProgress { 0 };
+
+    // Zooming
+    bool isZooming { false };
+    float originalDistance { 0 };
+    float zoomDistance { 0 };
+    double zoomTime { 0 };
+    double zoomProgress { 0 };
 
     Engine::FPSCamera camera;
 

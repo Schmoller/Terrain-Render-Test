@@ -179,7 +179,11 @@ void Scene::handleCameraMovement(double deltaSeconds) {
     const float lookSensitivity = 0.1f;
     const float moveSensitivity = 0.3f;
     const float moveSensitivityDebug = 1.0f;
+    const float zoomSensitivity = 10.0f;
     const float maxTargetDist = 100;
+    const float cameraHeightOffset = 20;
+    const float minimumZoom = 20;
+    const float maximumZoom = 2000;
 
     if (input.wasPressed(Engine::Key::eMouseRight) && panRotate == PanRotateState::None) {
         panRotate = PanRotateState::Panning;
@@ -193,6 +197,19 @@ void Scene::handleCameraMovement(double deltaSeconds) {
         rotatePitch = mainCamera->getPitch();
         cursorOriginal = input.getMousePos();
         input.captureMouse();
+    }
+    auto mouseDelta = input.getMouseWheel();
+    if (mouseDelta.y != 0 && panRotate == PanRotateState::None) {
+        auto zoomDistance = mainCamera->getDistance();
+
+        zoomDistance -= mouseDelta.y * zoomSensitivity;
+        if (zoomDistance < minimumZoom) {
+            zoomDistance = minimumZoom;
+        }
+        if (zoomDistance > maximumZoom) {
+            zoomDistance = maximumZoom;
+        }
+        mainCamera->zoomToUsingTime(zoomDistance, 0.35);
     }
 
     if (panRotate == PanRotateState::Panning) {
@@ -215,6 +232,11 @@ void Scene::handleCameraMovement(double deltaSeconds) {
             if (distanceToNewTarget > maxTargetDist) {
                 targetDiff = glm::normalize(targetDiff);
                 panTarget = mainCamera->getTarget() + targetDiff * maxTargetDist;
+            }
+
+            auto height = cdlod->getHeightAt(panTarget.x, panTarget.y);
+            if (std::isnormal(height)) {
+                panTarget.z = height + cameraHeightOffset;
             }
 
             mainCamera->moveToUsingTime(panTarget, 0.35);

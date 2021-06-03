@@ -87,6 +87,23 @@ void OverheadCamera::update(float deltaSeconds) {
         }
     }
 
+    if (isZooming) {
+        if (zoomTime > 0) {
+            zoomProgress += deltaSeconds;
+            if (zoomProgress > zoomTime) {
+                zoomProgress = zoomTime;
+                isZooming = false;
+            }
+
+            auto progress = static_cast<float>(zoomProgress / zoomTime);
+
+            distance = Easing::quadraticOut(originalDistance, zoomDistance, progress);
+            updatePosition();
+        } else {
+            isRotating = false;
+        }
+    }
+
     Engine::draw(Engine::BoundingSphere(target, 1));
 }
 
@@ -117,6 +134,14 @@ void OverheadCamera::rotateToUsingTime(float yaw, float pitch, double time) {
 
     rotateTime = time;
     rotateProgress = 0;
+}
+
+void OverheadCamera::zoomToUsingTime(float newDistance, double time) {
+    isZooming = true;
+    originalDistance = distance;
+    zoomDistance = newDistance;
+    zoomTime = time;
+    zoomProgress = 0;
 }
 
 void OverheadCamera::updatePosition() {
