@@ -17,7 +17,8 @@ public:
 
     void setWorldSize(const glm::vec2 &size);
 
-    void paint(const glm::vec2 &origin, float radius, int texturePlaceholder);
+    void paint(const glm::vec2 &origin, float radius, int texturePlaceholder, float opacity = 1, float hardness = 1);
+    void paint(const glm::vec2 &origin);
 
     std::shared_ptr<Engine::Image> getSplatMap() const { return splatMap; };
 
@@ -26,6 +27,10 @@ private:
     Engine::RenderEngine &engine;
 
     uint32_t activeBrushTexture { 0 };
+    float activeRadius { 100 };
+    float activeOpacity { 1 };
+    float activeHardness { 1 };
+
     uint32_t imageSize { 1024 };
     std::shared_ptr<Engine::Image> splatMap;
     std::unique_ptr<Engine::ComputeTask> paintBrush;

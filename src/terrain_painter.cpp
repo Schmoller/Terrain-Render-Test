@@ -7,6 +7,8 @@ struct BrushUniform {
     glm::vec2 origin;
     float radius;
     int32_t texture;
+    float opacity;
+    float hardness;
 };
 
 TerrainPainter::TerrainPainter(Engine::RenderEngine &engine) : engine(engine) {
@@ -42,13 +44,19 @@ void TerrainPainter::initialize() {
     engine.getTaskManager().submitTask(std::move(task));
 }
 
-void TerrainPainter::paint(const glm::vec2 &origin, float radius, int texturePlaceholder) {
+void
+TerrainPainter::paint(const glm::vec2 &origin, float radius, int texturePlaceholder, float opacity, float hardness) {
     auto transformedOrigin = (origin + offset) * scale;
     auto transformedRadius = radius * scale.x;
 
     paintBrush->execute(
-        BrushUniform { transformedOrigin, transformedRadius, texturePlaceholder }, imageSize, imageSize
+        BrushUniform { transformedOrigin, transformedRadius, texturePlaceholder, opacity, hardness }, imageSize,
+        imageSize
     );
+}
+
+void TerrainPainter::paint(const glm::vec2 &origin) {
+    paint(origin, activeRadius, activeBrushTexture, activeOpacity, activeHardness);
 }
 
 void TerrainPainter::setWorldSize(const glm::vec2 &size) {
@@ -61,6 +69,9 @@ void TerrainPainter::drawGui() {
 
     ImGui::InputInt("Texture", reinterpret_cast<int *>(&activeBrushTexture));
     activeBrushTexture = activeBrushTexture % getTextureCount();
+    ImGui::SliderFloat("Brush size", &activeRadius, 1, 500, "%.0f");
+    ImGui::SliderFloat("Opacity", &activeOpacity, 0, 1, "%.2f");
+    ImGui::SliderFloat("Hardness", &activeHardness, 0, 1, "%.2f");
 
     ImGui::End();
 }

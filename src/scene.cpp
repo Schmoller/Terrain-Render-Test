@@ -167,7 +167,7 @@ void Scene::handleControls() {
 
         auto hitPos = cdlod->raycastTerrain(pos, dir);
         if (hitPos) {
-            painter->paint({ hitPos->x, hitPos->y }, 10, painter->getBrushTexture());
+            painter->paint({ hitPos->x, hitPos->y });
         }
     }
 }
