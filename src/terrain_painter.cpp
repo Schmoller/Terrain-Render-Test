@@ -18,7 +18,9 @@ TerrainPainter::TerrainPainter(Engine::RenderEngine &engine) : engine(engine) {
 void TerrainPainter::initialize() {
     splatMap = engine.createImage(imageSize, imageSize)
         .withFormat(vk::Format::eR8G8B8A8Unorm)
-        .withUsage(vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled)
+        .withUsage(
+            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled
+        )
         .withMemoryUsage(vk::MemoryUsage::eGPUOnly)
             // .withMipLevels() // TODO: This should make it automatic based on size
         .build();
@@ -37,7 +39,8 @@ void TerrainPainter::initialize() {
 
             vk::ClearColorValue clearTo(std::array<float, 4> { 1.0f, 0.0f, 0.0f, 0.0f });
             vk::ImageSubresourceRange range(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
-            buffer.clearColorImage(splatMap->image(), vk::ImageLayout::eGeneral, &clearTo, 1, &range);
+            buffer.clearColorImage(splatMap->image(), vk::ImageLayout::eTransferDstOptimal, &clearTo, 1, &range);
+            splatMap->transition(buffer, vk::ImageLayout::eGeneral);
         }
     );
 

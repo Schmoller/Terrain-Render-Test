@@ -1,12 +1,18 @@
 #include "heightmap.hpp"
 #include <tech-core/engine.hpp>
 #include <tech-core/task.hpp>
+#include <tech-core/compute.hpp>
 #include <stb_image.h>
 
 const float HEIGHTMAP_SCALE = 65535.0f;
 
+struct Elevation {
+    float min;
+    float max;
+};
+
 Heightmap::Heightmap(uint32_t width, uint32_t height, Engine::RenderEngine &engine)
-    : width(width), height(height) {
+    : width(width), height(height), engine(engine) {
     bitmap.resize(width * height);
 
     // Fill with emptiness
@@ -15,15 +21,29 @@ Heightmap::Heightmap(uint32_t width, uint32_t height, Engine::RenderEngine &engi
     }
 
     bitmapImage = engine.createImage(width, height)
-        .withUsage(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)
+        .withUsage(
+            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage
+        )
         .withFormat(vk::Format::eR16Unorm)
         .withDestinationStage(vk::PipelineStageFlagBits::eVertexShader)
         .build();
 
+    normalImage = engine.createImage(width, height)
+        .withUsage(
+            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage
+        )
+        .withFormat(vk::Format::eR8G8B8A8Unorm)
+        .withDestinationStage(vk::PipelineStageFlagBits::eFragmentShader)
+        .build();
+
+    initiate();
+
     transferImage(engine);
+    updateNormalMap();
 }
 
-Heightmap::Heightmap(const char *filename, Engine::RenderEngine &engine) {
+Heightmap::Heightmap(const char *filename, Engine::RenderEngine &engine)
+    : engine(engine) {
     int fileWidth, fileHeight, components;
     unsigned char *pixels = stbi_load(filename, &fileWidth, &fileHeight, &components, 4);
     if (!pixels) {
@@ -43,12 +63,25 @@ Heightmap::Heightmap(const char *filename, Engine::RenderEngine &engine) {
     stbi_image_free(pixels);
 
     bitmapImage = engine.createImage(width, height)
-        .withUsage(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)
+        .withUsage(
+            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage
+        )
         .withFormat(vk::Format::eR16Unorm)
         .withDestinationStage(vk::PipelineStageFlagBits::eVertexShader)
         .build();
 
+    normalImage = engine.createImage(width, height)
+        .withUsage(
+            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage
+        )
+        .withFormat(vk::Format::eR8G8B8A8Unorm)
+        .withDestinationStage(vk::PipelineStageFlagBits::eFragmentShader)
+        .build();
+
+    initiate();
+
     transferImage(engine);
+    updateNormalMap();
 }
 
 void Heightmap::calculateMinMax(
@@ -84,7 +117,9 @@ void Heightmap::transferImage(Engine::RenderEngine &engine) {
             bitmapImage->transition(buffer, vk::ImageLayout::eTransferDstOptimal);
             vk::DeviceSize pixelSize = width * height * sizeof(uint16_t);
             bitmapImage->transfer(buffer, bitmap.data(), pixelSize);
-            bitmapImage->transition(buffer, vk::ImageLayout::eShaderReadOnlyOptimal);
+            bitmapImage->transition(buffer, vk::ImageLayout::eGeneral);
+
+            normalImage->transition(buffer, vk::ImageLayout::eGeneral);
         }
     );
 
@@ -142,4 +177,18 @@ float Heightmap::getHeightAt(uint32_t x, uint32_t y) const {
 
     auto newScale = maxElevation - minElevation;
     return static_cast<float>(bitmap[index]) / HEIGHTMAP_SCALE * newScale + minElevation;
+}
+
+void Heightmap::updateNormalMap() {
+    normalMapUpdateTask->execute(Elevation { minElevation, maxElevation }, width, height);
+}
+
+void Heightmap::initiate() {
+    normalMapUpdateTask = engine.createComputeTask()
+        .fromFile("assets/shaders/heightmap-normalgen-comp.spv")
+        .withStorageImage(0, Engine::UsageType::Input, bitmapImage)
+        .withStorageImage(1, Engine::UsageType::Output, normalImage)
+        .withPushConstant<Elevation>()
+        .withWorkgroups(16, 16)
+        .build();
 }

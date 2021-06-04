@@ -33,9 +33,8 @@ layout(location = 6) in uint meshTextureIndex;
 layout(location = 7) in vec2 meshMorphRange;// x = morphStart, y = morphDist (end - start)
 
 layout(location = 0) out vec4 fragColour;
-layout(location = 1) out vec3 fragNormal;
-layout(location = 2) out vec3 fragTexCoord;
-layout(location = 3) out vec2 fragHeightmapCoord;
+layout(location = 1) out vec3 fragTexCoord;
+layout(location = 2) out vec2 fragHeightmapCoord;
 
 vec2 morphVertex(vec2 meshVertexCoord, vec2 worldVertexCoord, float morph) {
     vec2 fracPart = (fract(meshVertexCoord * terrain.meshMorphConstants.x) * terrain.meshMorphConstants.y) * meshScale;
@@ -68,7 +67,6 @@ void main() {
 
     // Transform into screen space
     gl_Position = cam.proj * cam.view * vec4(vertexPos, 1.0);
-    fragNormal = inNormal;
 
     vec2 texCoord = ((vertexPos2D / terrain.halfSize) + vec2(0.5, 0.5));
     fragHeightmapCoord = texCoord;

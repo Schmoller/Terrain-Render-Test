@@ -22,6 +22,8 @@ public:
 
     std::shared_ptr<Engine::Image> getImageTemp() const { return bitmapImage; }
 
+    std::shared_ptr<Engine::Image> getNormalMap() const { return normalImage; }
+
     float getHeightAt(uint32_t x, uint32_t y) const;
     float getHeightAt(float x, float y) const;
 
@@ -30,6 +32,9 @@ public:
     );
 
 private:
+    Engine::RenderEngine &engine;
+    std::unique_ptr<Engine::ComputeTask> normalMapUpdateTask;
+
     uint32_t width { 0 };
     uint32_t height { 0 };
 
@@ -38,8 +43,12 @@ private:
 
     std::vector<uint16_t> bitmap;
     std::shared_ptr<Engine::Image> bitmapImage;
+    std::shared_ptr<Engine::Image> normalImage;
+
+    void initiate();
 
     void transferImage(Engine::RenderEngine &);
+    void updateNormalMap();
 };
 
 

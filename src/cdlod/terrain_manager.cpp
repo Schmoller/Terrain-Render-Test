@@ -167,9 +167,17 @@ void TerrainManager::initialiseSwapChainResources(
         .bindTextures(1, 2);
 
     if (heightmap) {
-        builder.bindSampledImage(2, 1, heightmap->getImageTemp(), vk::ShaderStageFlagBits::eVertex, heightmapSampler);
+        builder.bindSampledImage(
+            2, 1, heightmap->getImageTemp(), vk::ShaderStageFlagBits::eVertex, vk::ImageLayout::eGeneral,
+            heightmapSampler
+        );
+        builder.bindSampledImage(
+            2, 4, heightmap->getNormalMap(), vk::ShaderStageFlagBits::eFragment, vk::ImageLayout::eGeneral,
+            heightmapSampler
+        );
     } else {
-        builder.bindSampledImage(2, 1, vk::ShaderStageFlagBits::eVertex, heightmapSampler);
+        builder.bindSampledImage(2, 1, vk::ShaderStageFlagBits::eVertex, vk::ImageLayout::eGeneral, heightmapSampler);
+        builder.bindSampledImage(2, 4, vk::ShaderStageFlagBits::eFragment, vk::ImageLayout::eGeneral, heightmapSampler);
     }
 
     if (painter) {
@@ -243,13 +251,8 @@ void TerrainManager::setHeightmap(Heightmap &heightmap) {
     this->heightmap = &heightmap;
     invalidateHeightmap({}, { heightmap.getWidth(), heightmap.getHeight() });
 
-    vk::DescriptorImageInfo heightmapImage(
-        heightmapSampler,
-        heightmap.getImage(),
-        vk::ImageLayout::eShaderReadOnlyOptimal
-    );
-
     pipeline->bindImage(2, 1, heightmap.getImageTemp());
+    pipeline->bindImage(2, 4, heightmap.getNormalMap());
 
     terrainUniform.heightOffset = heightmap.getMinElevation();
     terrainUniform.heightScale = heightmap.getMaxElevation() - heightmap.getMinElevation();
@@ -267,7 +270,7 @@ void TerrainManager::invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2
 }
 
 void TerrainManager::drawGUI() {
-    ImGui::Combo("Debug Mode", reinterpret_cast<int *>(&terrainUniform.debugMode), "None\0Range\0Splat Map\0");
+    ImGui::Combo("Debug Mode", reinterpret_cast<int *>(&terrainUniform.debugMode), "None\0Range\0Splat Map\0Normals\0");
 
     ImGui::Spacing();
     if (ImGui::Combo("Mesh Size", &meshSizeIndex, meshSizeNames.data(), meshSizeNames.size())) {
@@ -338,6 +341,7 @@ TerrainManager::raycastTerrain(const glm::vec3 &origin, const glm::vec3 &directi
 
 void TerrainManager::writeBarriers(vk::CommandBuffer commandBuffer) {
     painter->getSplatMap()->transition(commandBuffer, vk::ImageLayout::eGeneral, true);
+    heightmap->getNormalMap()->transition(commandBuffer, vk::ImageLayout::eGeneral, true);
 }
 
 
