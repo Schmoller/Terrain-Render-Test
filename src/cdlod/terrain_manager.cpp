@@ -155,8 +155,8 @@ void TerrainManager::initialiseSwapChainResources(
     this->swapChainImages = swapChainImages;
 
     auto builder = engine.createPipeline()
-        .withVertexShader("assets/shaders/cdlod-vert.spv")
-        .withFragmentShader("assets/shaders/cdlod-frag.spv")
+        .withVertexShader("assets/shaders/cdlod/vert.spv")
+        .withFragmentShader("assets/shaders/cdlod/frag.spv")
         .withGeometryType(Engine::PipelineGeometryType::Polygons)
         .withVertexAttributeDescriptions(Engine::Vertex::getAttributeDescriptions())
         .withVertexBindingDescription(Engine::Vertex::getBindingDescription())

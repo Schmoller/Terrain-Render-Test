@@ -26,7 +26,7 @@ void TerrainPainter::initialize() {
         .build();
 
     paintBrush = engine.createComputeTask()
-        .fromFile("assets/shaders/brush-comp.spv")
+        .fromFile("assets/shaders/compute/painting/paintbrush.spv")
         .withStorageImage(0, Engine::UsageType::Output, splatMap)
         .withPushConstant<BrushUniform>()
         .withWorkgroups(16, 16)

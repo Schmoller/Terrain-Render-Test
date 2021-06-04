@@ -13,15 +13,22 @@ target_link_libraries(terrain_test tech)
 
 add_executable(genheightmap tools/heightmap_gen/main.cpp)
 
+set(SHADER_SRC_DIR ${PROJECT_SOURCE_DIR}/assets/shaders)
+set(SHADER_BIN_DIR ${PROJECT_BINARY_DIR}/assets/shaders)
+
 # Shaders
-file(GLOB SHADERS_SRC "assets/shaders/*.glsl")
+file(GLOB_RECURSE SHADERS_SRC "${SHADER_SRC_DIR}/*.glsl")
+
 
 foreach (SHADER_FILE ${SHADERS_SRC})
-    get_filename_component(FILE_NAME ${SHADER_FILE} NAME_WLE)
-    set(SPIRV "${PROJECT_BINARY_DIR}/assets/shaders/${FILE_NAME}.spv")
+    file(RELATIVE_PATH RELATIVE_PATH_TO_SHADER "${SHADER_SRC_DIR}" "${SHADER_FILE}")
+    get_filename_component(FILE_NAME "${RELATIVE_PATH_TO_SHADER}" NAME_WLE)
+    get_filename_component(RELATIVE_DIR_TO_SHADER "${RELATIVE_PATH_TO_SHADER}" DIRECTORY)
+
+    set(SPIRV "${SHADER_BIN_DIR}/${RELATIVE_DIR_TO_SHADER}/${FILE_NAME}.spv")
     add_custom_command(
             OUTPUT ${SPIRV}
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/assets/shaders/"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_BIN_DIR}/${RELATIVE_DIR_TO_SHADER}"
             COMMAND ${GLSL_COMPILER} ${SHADER_FILE} -o ${SPIRV}
             DEPENDS ${SHADER_FILE}
     )

@@ -185,7 +185,7 @@ void Heightmap::updateNormalMap() {
 
 void Heightmap::initiate() {
     normalMapUpdateTask = engine.createComputeTask()
-        .fromFile("assets/shaders/heightmap-normalgen-comp.spv")
+        .fromFile("assets/shaders/compute/heightmap/regen_normals.spv")
         .withStorageImage(0, Engine::UsageType::Input, bitmapImage)
         .withStorageImage(1, Engine::UsageType::Output, normalImage)
         .withPushConstant<Elevation>()
