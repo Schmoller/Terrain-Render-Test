@@ -253,6 +253,8 @@ void TerrainManager::setHeightmap(Heightmap &heightmap) {
 
     pipeline->bindImage(2, 1, heightmap.getImageTemp());
     pipeline->bindImage(2, 4, heightmap.getNormalMap());
+    pipelineWireframe->bindImage(2, 1, heightmap.getImageTemp());
+    pipelineWireframe->bindImage(2, 4, heightmap.getNormalMap());
 
     terrainUniform.heightOffset = heightmap.getMinElevation();
     terrainUniform.heightScale = heightmap.getMaxElevation() - heightmap.getMinElevation();
@@ -262,6 +264,7 @@ void TerrainManager::setHeightmap(Heightmap &heightmap) {
 void TerrainManager::setTerrainPainter(TerrainPainter &terrainPainter) {
     painter = &terrainPainter;
     pipeline->bindImage(2, 3, painter->getSplatMap());
+    pipelineWireframe->bindImage(2, 3, painter->getSplatMap());
 }
 
 void TerrainManager::invalidateHeightmap(const glm::ivec2 &min, const glm::ivec2 &max) {
