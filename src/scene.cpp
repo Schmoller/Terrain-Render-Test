@@ -1,4 +1,5 @@
 #include "scene.hpp"
+#include "tools/painter_tool.hpp"
 
 #include <tech-core/camera.hpp>
 #include <tech-core/subsystem/debug.hpp>
@@ -39,7 +40,7 @@ void Scene::initialize() {
     this->debugSubsystem = engine.getSubsystem(Engine::Subsystem::DebugSubsystem::ID);
 
     initializeHeightmap();
-    painter = std::make_unique<TerrainPainter>(engine);
+    painter = std::make_shared<TerrainPainter>(engine);
     painter->initialize();
 
     // initialize terrain algorithms
@@ -51,6 +52,9 @@ void Scene::initialize() {
     painter->setWorldSize(cdlod->getTerrainSize());
 
     initTextures();
+
+    // Init tools
+    addTool(std::make_unique<PainterTool>(painter));
 }
 
 void Scene::run() {
@@ -155,19 +159,102 @@ void Scene::handleControls() {
     if (this->inputManager->wasPressed(Engine::Key::e4)) {
         cdlod->setDebugMode(cdlod->getDebugMode() + 1);
     }
-    if (this->inputManager->isPressed(Engine::Key::eMouseLeft)) {
-        glm::vec3 pos, dir;
-        auto mousePos = engine.getInputManager().getMousePos();
-        auto bounds = engine.getScreenBounds();
 
-        mousePos.x = (mousePos.x / bounds.width()) * 2 - 1;
-        mousePos.y = (mousePos.y / bounds.height()) * 2 - 1;
+    auto mousePos = engine.getInputManager().getMousePos();
+    auto bounds = engine.getScreenBounds();
 
-        mainCamera->getCamera().rayFromCoord(mousePos, pos, dir);
+    mousePos.x = (mousePos.x / bounds.width()) * 2 - 1;
+    mousePos.y = (mousePos.y / bounds.height()) * 2 - 1;
 
-        auto hitPos = cdlod->raycastTerrain(pos, dir);
-        if (hitPos) {
-            painter->paint({ hitPos->x, hitPos->y });
+    if (activeTool) {
+        if (this->inputManager->wasPressed(Engine::Key::eMouseLeft)) {
+            activeTool->onMouseDown(
+                {
+                    MouseButton::Left,
+                    *inputManager,
+                    mainCamera->getCamera(),
+                    *cdlod,
+                    mousePos
+                }
+            );
+            isToolMouseDown = true;
+        } else if (this->inputManager->wasPressed(Engine::Key::eMouseRight)) {
+            activeTool->onMouseDown(
+                {
+                    MouseButton::Right,
+                    *inputManager,
+                    mainCamera->getCamera(),
+                    *cdlod,
+                    mousePos
+                }
+            );
+            isToolMouseDown = true;
+        } else if (this->inputManager->wasPressed(Engine::Key::eMouseMiddle)) {
+            activeTool->onMouseDown(
+                {
+                    MouseButton::Middle,
+                    *inputManager,
+                    mainCamera->getCamera(),
+                    *cdlod,
+                    mousePos
+                }
+            );
+            isToolMouseDown = true;
+        } else if (this->inputManager->wasReleased(Engine::Key::eMouseLeft)) {
+            activeTool->onMouseUp(
+                {
+                    MouseButton::Left,
+                    *inputManager,
+                    mainCamera->getCamera(),
+                    *cdlod,
+                    mousePos
+                }
+            );
+
+            if (!this->inputManager->isPressed(Engine::Key::eMouseRight) &&
+                !this->inputManager->isPressed(Engine::Key::eMouseMiddle)) {
+                isToolMouseDown = false;
+            }
+        } else if (this->inputManager->wasReleased(Engine::Key::eMouseRight)) {
+            activeTool->onMouseUp(
+                {
+                    MouseButton::Right,
+                    *inputManager,
+                    mainCamera->getCamera(),
+                    *cdlod,
+                    mousePos
+                }
+            );
+
+            if (!this->inputManager->isPressed(Engine::Key::eMouseLeft) &&
+                !this->inputManager->isPressed(Engine::Key::eMouseMiddle)) {
+                isToolMouseDown = false;
+            }
+        } else if (this->inputManager->wasReleased(Engine::Key::eMouseMiddle)) {
+            activeTool->onMouseUp(
+                {
+                    MouseButton::Middle,
+                    *inputManager,
+                    mainCamera->getCamera(),
+                    *cdlod,
+                    mousePos
+                }
+            );
+
+            if (!this->inputManager->isPressed(Engine::Key::eMouseLeft) &&
+                !this->inputManager->isPressed(Engine::Key::eMouseRight)) {
+                isToolMouseDown = false;
+            }
+        } else if (isToolMouseDown) {
+            activeTool->onMouseMove(
+                {
+                    MouseButton::None,
+                    *inputManager,
+                    mainCamera->getCamera(),
+                    *cdlod,
+                    mousePos
+                }
+            );
         }
     }
 }
@@ -424,31 +511,44 @@ void Scene::drawGizmos() {
 }
 
 void Scene::initializeHeightmap() {
-    heightmap = std::make_unique<Heightmap>("assets/textures/heightmap.png", engine);
+    heightmap = std::make_shared<Heightmap>("assets/textures/heightmap.png", engine);
     // heightmap = std::make_unique<Heightmap>(4096, 4096, engine);
 }
 
 void Scene::initTextures() {
-    engine.getTextureManager().createTexture("green")
-        .fromFile("assets/textures/green.png")
-        .withMipMode(Engine::MipType::Generate)
-        .build();
-    engine.getTextureManager().createTexture("cyan")
-        .fromFile("assets/textures/cyan.png")
-        .withMipMode(Engine::MipType::Generate)
-        .build();
-    engine.getTextureManager().createTexture("gray")
-        .fromFile("assets/textures/gray.png")
-        .withMipMode(Engine::MipType::Generate)
-        .build();
-    engine.getTextureManager().createTexture("brown")
-        .fromFile("assets/textures/brown.png")
-        .withMipMode(Engine::MipType::Generate)
-        .build();
-    engine.getTextureManager().createTexture("magenta")
-        .fromFile("assets/textures/magenta.png")
-        .withMipMode(Engine::MipType::Generate)
-        .build();
+    std::vector<Engine::Texture *> textures;
+    textures.push_back(
+        engine.getTextureManager().createTexture("green")
+            .fromFile("assets/textures/green.png")
+            .withMipMode(Engine::MipType::Generate)
+            .build()
+    );
+    textures.push_back(
+        engine.getTextureManager().createTexture("cyan")
+            .fromFile("assets/textures/cyan.png")
+            .withMipMode(Engine::MipType::Generate)
+            .build()
+    );
+    textures.push_back(
+        engine.getTextureManager().createTexture("gray")
+            .fromFile("assets/textures/gray.png")
+            .withMipMode(Engine::MipType::Generate)
+            .build()
+    );
+    textures.push_back(
+        engine.getTextureManager().createTexture("brown")
+            .fromFile("assets/textures/brown.png")
+            .withMipMode(Engine::MipType::Generate)
+            .build()
+    );
+    textures.push_back(
+        engine.getTextureManager().createTexture("magenta")
+            .fromFile("assets/textures/magenta.png")
+            .withMipMode(Engine::MipType::Generate)
+            .build()
+    );
+
+    painter->setTextures(textures);
 }
 
 void Scene::drawGUI() {
@@ -469,6 +569,9 @@ void Scene::drawGUI() {
     ImGui::ShowDemoWindow();
 
     painter->drawGui();
+
+    // Toolbar
+    drawToolbox();
 }
 
 void Scene::drawOverlayInfo() {
@@ -503,4 +606,84 @@ void Scene::drawOverlayInfo() {
     );
 
     ImGui::End();
+}
+
+void Scene::drawToolbox() {
+    // Fix to bottom middle
+    const ImGuiViewport *viewport = ImGui::GetMainViewport();
+    ImVec2 workPos = viewport->WorkPos;
+    ImVec2 workSize = viewport->WorkSize;
+
+    ImVec2 windowPos;
+    windowPos.x = (workPos.x + workSize.x / 2);
+    windowPos.y = (workPos.y + workSize.y - 10);
+
+    ImVec2 windowSize;
+    windowSize.x = (workSize.x * 0.5f);
+    windowSize.y = (workSize.y * 0.1f);
+
+    ImVec2 windowPosPivot;
+    windowPosPivot.x = 0.5f;
+    windowPosPivot.y = 1.0f;
+
+    ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always, windowPosPivot);
+    ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+
+    ImGui::Begin(
+        "Toolbox", nullptr,
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoResize
+    );
+
+    if (ImGui::BeginTabBar("CategorySelector", ImGuiTabBarFlags_None)) {
+        for (auto &tool : tools) {
+            if (ImGui::BeginTabItem(tool->getName())) {
+                tool->drawToolbarTab();
+                ImGui::EndTabItem();
+            }
+        }
+        ImGui::EndTabBar();
+    }
+
+    ImGui::End();
+}
+
+void Scene::addTool(std::unique_ptr<ToolBase> &&tool) {
+    tool->setStateCallback(
+        [this](ToolBase *tool, bool isActive) {
+            if (isActive) {
+                setActiveTool(tool);
+            } else {
+                if (activeTool == tool) {
+                    setActiveTool();
+                }
+            }
+        }
+    );
+
+    tools.push_back(std::move(tool));
+}
+
+void Scene::setActiveTool(ToolBase *tool) {
+    if (tool) {
+        if (activeTool) {
+            if (activeTool != tool) {
+                activeTool->onDeactivate();
+                std::cout << "Tool " << activeTool->getName() << " deactivated" << std::endl;
+            } else {
+                // Dont double activate
+                return;
+            }
+        }
+
+        activeTool = tool;
+        activeTool->onActivate();
+        std::cout << "Tool " << activeTool->getName() << " activated" << std::endl;
+    } else {
+        if (activeTool) {
+            activeTool->onDeactivate();
+            std::cout << "Tool " << activeTool->getName() << " deactivated" << std::endl;
+            activeTool = nullptr;
+        }
+    }
 }

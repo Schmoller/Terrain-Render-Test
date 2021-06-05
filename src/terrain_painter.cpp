@@ -47,6 +47,38 @@ void TerrainPainter::initialize() {
     engine.getTaskManager().submitTask(std::move(task));
 }
 
+void TerrainPainter::setTextures(const std::vector<Engine::Texture *> &paintTextures) {
+    // Validate that all textures are usable. Unfortunately we have these requirements:
+    // - All textures must exist in same array
+    // - Textures must be contiguous from index 0
+    // - Must be exactly 5 textures
+
+    if (paintTextures.size() != 5) {
+        throw std::runtime_error("TerrainPainter: Needs 5 textures");
+    }
+
+    uint32_t arrayIndex = paintTextures[0]->arrayId;
+    uint32_t lastIndex = paintTextures[0]->arraySlot;
+
+    if (lastIndex != 0) {
+        throw std::runtime_error("TerrainPainter: Textures must be contiguous from index 0");
+    }
+
+    for (auto i = 1; i < paintTextures.size(); ++i) {
+        if (paintTextures[i]->arrayId != arrayIndex) {
+            throw std::runtime_error("TerrainPainter: All textures must be in same array");
+        }
+
+        if (paintTextures[i]->arraySlot != lastIndex + 1) {
+            throw std::runtime_error("TerrainPainter: Textures must be contiguous from index 0");
+        }
+
+        lastIndex = paintTextures[i]->arraySlot;
+    }
+
+    textures = paintTextures;
+}
+
 void
 TerrainPainter::paint(const glm::vec2 &origin, float radius, int texturePlaceholder, float opacity, float hardness) {
     auto transformedOrigin = (origin + offset) * scale;
@@ -68,13 +100,5 @@ void TerrainPainter::setWorldSize(const glm::vec2 &size) {
 }
 
 void TerrainPainter::drawGui() {
-    ImGui::Begin("Painter");
 
-    ImGui::InputInt("Texture", reinterpret_cast<int *>(&activeBrushTexture));
-    activeBrushTexture = activeBrushTexture % getTextureCount();
-    ImGui::SliderFloat("Brush size", &activeRadius, 1, 500, "%.0f");
-    ImGui::SliderFloat("Opacity", &activeOpacity, 0, 1, "%.2f");
-    ImGui::SliderFloat("Hardness", &activeHardness, 0, 1, "%.2f");
-
-    ImGui::End();
 }

@@ -10,6 +10,8 @@
 #include "utils/overhead_camera.hpp"
 #include "terrain_painter.hpp"
 
+#include "tools/tool_base.hpp"
+
 const uint32_t MaxFrameTimePoints = 200;
 
 enum class PanRotateState {
@@ -23,6 +25,11 @@ public:
     void initialize();
 
     void run();
+
+    void addTool(std::unique_ptr<ToolBase> &&tool);
+    void setActiveTool(ToolBase *tool = {});
+
+    ToolBase *getActiveTool() const { return activeTool; }
 
     Engine::Subsystem::DebugSubsystem *debug() { return this->debugSubsystem; }
 
@@ -44,7 +51,6 @@ private:
     glm::vec3 fixedRayOrigin;
     glm::vec3 fixedRayDir;
 
-//    std::unique_ptr<Engine::FPSCamera> mainCamera;
     std::unique_ptr<Engine::FPSCamera> debugCamera;
 
     Engine::FPSCamera *activeCamera { nullptr };
@@ -56,8 +62,13 @@ private:
     float instantFrameTime { 0 };
     CircularBuffer<MaxFrameTimePoints> frameTimes;
 
-    std::unique_ptr<Heightmap> heightmap;
-    std::unique_ptr<TerrainPainter> painter;
+    std::shared_ptr<Heightmap> heightmap;
+    std::shared_ptr<TerrainPainter> painter;
+
+    // Tools
+    std::vector<std::unique_ptr<ToolBase>> tools;
+    ToolBase *activeTool { nullptr };
+    bool isToolMouseDown { false };
 
     // Settings
     bool wireframe { false };
@@ -77,6 +88,7 @@ private:
     void drawGizmos();
     void drawGUI();
     void drawOverlayInfo();
+    void drawToolbox();
 };
 
 
