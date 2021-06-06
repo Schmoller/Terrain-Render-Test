@@ -347,5 +347,19 @@ void TerrainManager::writeBarriers(vk::CommandBuffer commandBuffer) {
     heightmap->getNormalMap()->transition(commandBuffer, vk::ImageLayout::eGeneral, true);
 }
 
+std::optional<glm::vec2> TerrainManager::getHeightmapCoord(const glm::vec2 &worldCoord) const {
+    auto size = lodTree->getTerrainSize();
+    auto offset = lodTree->getTerrainOffset();
+    glm::vec2 heightmapScale(1 / size.x * heightmap->getWidth(), 1 / size.y * heightmap->getHeight());
+
+    glm::vec2 coordHM = (glm::vec2(worldCoord.x, worldCoord.y) - offset) * heightmapScale;
+
+    if (coordHM.x < 0 || coordHM.y < 0 || coordHM.x >= heightmap->getWidth() || coordHM.y >= heightmap->getHeight()) {
+        return {};
+    }
+
+    return coordHM;
+}
+
 
 }

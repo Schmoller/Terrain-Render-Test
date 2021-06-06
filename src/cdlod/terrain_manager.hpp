@@ -49,6 +49,8 @@ public:
     float getHeightAt(const glm::vec2 &coords) const { return getHeightAt(coords.x, coords.y); };
     float getHeightAt(float x, float y) const;
 
+    std::optional<glm::vec2> getHeightmapCoord(const glm::vec2 &worldCoord) const;
+
     std::optional<glm::vec3>
     raycastTerrain(const glm::vec3 &origin, const glm::vec3 &direction) const;
 

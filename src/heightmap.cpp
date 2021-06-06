@@ -11,34 +11,26 @@ struct Elevation {
     float max;
 };
 
+struct TerraformBrushUniform {
+    glm::vec2 origin;
+    float radius;
+    float change;
+    float hardness;
+};
+
 Heightmap::Heightmap(uint32_t width, uint32_t height, Engine::RenderEngine &engine)
     : width(width), height(height), engine(engine) {
-    bitmap.resize(width * height);
+
+    std::vector<uint16_t> pixelData(width * height);
 
     // Fill with emptiness
     for (auto i = 0; i < width * height; ++i) {
-        bitmap[i] = static_cast<uint16_t>(0);
+        pixelData[i] = static_cast<uint16_t>(0);
     }
-
-    bitmapImage = engine.createImage(width, height)
-        .withUsage(
-            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage
-        )
-        .withFormat(vk::Format::eR16Unorm)
-        .withDestinationStage(vk::PipelineStageFlagBits::eVertexShader)
-        .build();
-
-    normalImage = engine.createImage(width, height)
-        .withUsage(
-            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage
-        )
-        .withFormat(vk::Format::eR8G8B8A8Unorm)
-        .withDestinationStage(vk::PipelineStageFlagBits::eFragmentShader)
-        .build();
 
     initiate();
 
-    transferImage(engine);
+    transferImage(engine, pixelData.data());
     updateNormalMap();
 }
 
@@ -52,36 +44,24 @@ Heightmap::Heightmap(const char *filename, Engine::RenderEngine &engine)
 
     uint32_t *rgbPixels = reinterpret_cast<uint32_t *>(pixels);
 
-    bitmap.resize(fileWidth * fileHeight);
+    std::vector<uint16_t> pixelData(fileWidth * fileHeight);
     width = fileWidth;
     height = fileHeight;
 
     for (auto i = 0; i < width * height; ++i) {
-        bitmap[i] = static_cast<uint16_t>(rgbPixels[i] & 0xFFFF);
+        pixelData[i] = static_cast<uint16_t>(rgbPixels[i] & 0xFFFF);
     }
 
     stbi_image_free(pixels);
 
-    bitmapImage = engine.createImage(width, height)
-        .withUsage(
-            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage
-        )
-        .withFormat(vk::Format::eR16Unorm)
-        .withDestinationStage(vk::PipelineStageFlagBits::eVertexShader)
-        .build();
-
-    normalImage = engine.createImage(width, height)
-        .withUsage(
-            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage
-        )
-        .withFormat(vk::Format::eR8G8B8A8Unorm)
-        .withDestinationStage(vk::PipelineStageFlagBits::eFragmentShader)
-        .build();
-
     initiate();
 
-    transferImage(engine);
+    transferImage(engine, pixelData.data());
     updateNormalMap();
+}
+
+Heightmap::~Heightmap() {
+    readbackBuffer->unmap();
 }
 
 void Heightmap::calculateMinMax(
@@ -109,14 +89,16 @@ void Heightmap::calculateMinMax(
     maximum = static_cast<float>(maxRaw) / HEIGHTMAP_SCALE * newScale + minElevation;
 }
 
-void Heightmap::transferImage(Engine::RenderEngine &engine) {
+void Heightmap::transferImage(Engine::RenderEngine &engine, uint16_t *pixelData) {
     auto task = engine.getTaskManager().createTask();
+    vk::DeviceSize pixelSize = width * height * sizeof(uint16_t);
+
 
     task->execute(
-        [this](vk::CommandBuffer buffer) {
+        [this, pixelData, pixelSize](vk::CommandBuffer buffer) {
             bitmapImage->transition(buffer, vk::ImageLayout::eTransferDstOptimal);
-            vk::DeviceSize pixelSize = width * height * sizeof(uint16_t);
-            bitmapImage->transfer(buffer, bitmap.data(), pixelSize);
+            bitmapImage->transfer(buffer, pixelData, pixelSize);
+            bitmapImage->transferOut(buffer, readbackBuffer.get());
             bitmapImage->transition(buffer, vk::ImageLayout::eGeneral);
 
             normalImage->transition(buffer, vk::ImageLayout::eGeneral);
@@ -184,6 +166,29 @@ void Heightmap::updateNormalMap() {
 }
 
 void Heightmap::initiate() {
+    bitmapImage = engine.createImage(width, height)
+        .withUsage(
+            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc |
+                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage
+        )
+        .withFormat(vk::Format::eR16Unorm)
+        .withDestinationStage(vk::PipelineStageFlagBits::eVertexShader)
+        .build();
+
+    normalImage = engine.createImage(width, height)
+        .withUsage(
+            vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage
+        )
+        .withFormat(vk::Format::eR8G8B8A8Unorm)
+        .withDestinationStage(vk::PipelineStageFlagBits::eFragmentShader)
+        .build();
+
+    readbackBuffer = engine.getBufferManager().aquireShared(
+        width * height * 2, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryUsage::eGPUToCPU
+    );
+
+    readbackBuffer->map(reinterpret_cast<void **>(&bitmap));
+
     normalMapUpdateTask = engine.createComputeTask()
         .fromFile("assets/shaders/compute/heightmap/regen_normals.spv")
         .withStorageImage(0, Engine::UsageType::Input, bitmapImage)
@@ -191,4 +196,25 @@ void Heightmap::initiate() {
         .withPushConstant<Elevation>()
         .withWorkgroups(16, 16)
         .build();
+
+    brushTask = engine.createComputeTask()
+        .fromFile("assets/shaders/compute/heightmap/terraform.spv")
+        .withStorageImage(0, Engine::UsageType::InputOutput, bitmapImage)
+//        .withStorageImage(1, Engine::UsageType::Output, normalImage)
+        .withPushConstant<TerraformBrushUniform>()
+        .withWorkgroups(16, 16)
+        .withImageResultTo(0, readbackBuffer)
+        .build();
+}
+
+void Heightmap::terraform(TerraformMode mode, const glm::vec2 &pos, float radius, float amount, float hardness) {
+    auto range = maxElevation - minElevation;
+    if (mode == TerraformMode::Subtract) {
+        amount = -amount;
+    }
+
+    brushTask->execute(TerraformBrushUniform { pos, radius, amount / range, hardness }, width, height);
+    normalMapUpdateTask->execute(Elevation { minElevation, maxElevation }, width, height);
+
+    // TODO: Need to ensure that we update the terrain manager
 }

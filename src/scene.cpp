@@ -1,5 +1,6 @@
 #include "scene.hpp"
 #include "tools/painter_tool.hpp"
+#include "tools/terraform_tool.hpp"
 
 #include <tech-core/camera.hpp>
 #include <tech-core/subsystem/debug.hpp>
@@ -55,6 +56,7 @@ void Scene::initialize() {
 
     // Init tools
     addTool(std::make_unique<PainterTool>(painter));
+    addTool(std::make_unique<TerraformTool>(heightmap, *this));
 }
 
 void Scene::run() {
@@ -686,4 +688,12 @@ void Scene::setActiveTool(ToolBase *tool) {
             activeTool = nullptr;
         }
     }
+}
+
+std::optional<glm::vec2> Scene::getHeightmapCoord(const glm::vec2 &worldCoord) {
+    return cdlod->getHeightmapCoord(worldCoord);
+}
+
+std::optional<glm::vec2> Scene::getHeightmapCoord(const glm::vec3 &worldCoord) {
+    return cdlod->getHeightmapCoord({ worldCoord.x, worldCoord.y });
 }

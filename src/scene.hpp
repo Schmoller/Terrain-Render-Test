@@ -3,6 +3,7 @@
 #include <tech-core/engine.hpp>
 #include <tech-core/subsystem/debug.hpp>
 #include <memory>
+#include <optional>
 
 #include "cdlod/terrain_manager.hpp"
 #include <chrono>
@@ -30,6 +31,9 @@ public:
     void setActiveTool(ToolBase *tool = {});
 
     ToolBase *getActiveTool() const { return activeTool; }
+
+    std::optional<glm::vec2> getHeightmapCoord(const glm::vec2 &worldCoord);
+    std::optional<glm::vec2> getHeightmapCoord(const glm::vec3 &worldCoord);
 
     Engine::Subsystem::DebugSubsystem *debug() { return this->debugSubsystem; }
 
