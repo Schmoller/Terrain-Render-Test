@@ -216,5 +216,25 @@ void Heightmap::terraform(TerraformMode mode, const glm::vec2 &pos, float radius
     brushTask->execute(TerraformBrushUniform { pos, radius, amount / range, hardness }, width, height);
     normalMapUpdateTask->execute(Elevation { minElevation, maxElevation }, width, height);
 
-    // TODO: Need to ensure that we update the terrain manager
+    brushTask->doAfterExecution(
+        [this, pos, radius]() {
+            if (isModified) {
+                invalidateStart.x = std::min(invalidateStart.x, static_cast<int>(std::floor(pos.x - radius)));
+                invalidateStart.y = std::min(invalidateStart.x, static_cast<int>(std::floor(pos.x - radius)));
+                invalidateEnd.x = std::min(invalidateEnd.x, static_cast<int>(std::ceil(pos.x + radius)));
+                invalidateEnd.y = std::min(invalidateEnd.x, static_cast<int>(std::ceil(pos.x + radius)));
+            } else {
+                glm::vec2 offset { radius, radius };
+                invalidateStart = glm::floor(pos - offset);
+                invalidateEnd = glm::ceil(pos + offset);
+                isModified = true;
+            }
+        }
+    );
+}
+
+void Heightmap::getAndClearInvalidationRegion(glm::ivec2 &min, glm::ivec2 &max) {
+    min = invalidateStart;
+    max = invalidateEnd;
+    isModified = false;
 }

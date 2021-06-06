@@ -77,6 +77,13 @@ void Scene::run() {
         averageFPS = averageFPS * AverageFPSFactor + instantFPS * (1 - AverageFPSFactor);
         instantFrameTime = timeDelta.count();
 
+        if (heightmap->getIsModified()) {
+            glm::ivec2 invalidateMin, invalidateMax;
+            heightmap->getAndClearInvalidationRegion(invalidateMin, invalidateMax);
+
+            cdlod->invalidateHeightmap(invalidateMin, invalidateMax);
+        }
+
         handleControls();
         handleCameraMovement(timeDelta.count());
 

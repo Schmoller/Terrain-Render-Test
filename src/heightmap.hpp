@@ -40,6 +40,10 @@ public:
 
     void terraform(TerraformMode mode, const glm::vec2 &pos, float radius, float amount, float hardness = 0);
 
+    bool getIsModified() const { return isModified; }
+
+    void getAndClearInvalidationRegion(glm::ivec2 &min, glm::ivec2 &max);
+
 private:
     Engine::RenderEngine &engine;
     std::unique_ptr<Engine::ComputeTask> normalMapUpdateTask;
@@ -56,6 +60,10 @@ private:
     std::shared_ptr<Engine::Buffer> readbackBuffer;
 
     std::unique_ptr<Engine::ComputeTask> brushTask;
+
+    bool isModified { false };
+    glm::ivec2 invalidateStart;
+    glm::ivec2 invalidateEnd;
 
     void initiate();
 
