@@ -41,7 +41,7 @@ void PainterTool::onDeactivate() {
     activeBrushTexture = -1;
 }
 
-void PainterTool::onMouseMove(const ToolMouseEvent &event) {
+void PainterTool::onMouseMove(const ToolMouseEvent &event, double delta) {
     if (event.left) {
         auto pos = event.getWorldCoordsAtTerrain();
 

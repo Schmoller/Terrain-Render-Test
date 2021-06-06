@@ -60,8 +60,6 @@ void Scene::initialize() {
 }
 
 void Scene::run() {
-//    this->inputManager->captureMouse();
-
     lastFrameStart = std::chrono::high_resolution_clock::now();
 
     while (engine.beginFrame()) {
@@ -82,6 +80,16 @@ void Scene::run() {
             heightmap->getAndClearInvalidationRegion(invalidateMin, invalidateMax);
 
             cdlod->invalidateHeightmap(invalidateMin, invalidateMax);
+
+            // Make sure that camera is not below ground
+            if (panRotate != PanRotateState::Panning) {
+                auto height = cdlod->getHeightAt(panTarget.x, panTarget.y);
+                if (std::isnormal(height)) {
+                    panTarget.z = height + 20;
+                }
+
+                mainCamera->moveToUsingTime(panTarget, 0.35);
+            }
         }
 
         handleControls();
@@ -95,8 +103,6 @@ void Scene::run() {
 
         engine.render();
     }
-
-//    this->inputManager->releaseMouse();
 }
 
 void Scene::drawGrid() {
@@ -262,7 +268,8 @@ void Scene::handleControls() {
                     mainCamera->getCamera(),
                     *cdlod,
                     mousePos
-                }
+                },
+                instantFrameTime
             );
         }
     }

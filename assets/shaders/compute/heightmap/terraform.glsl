@@ -3,6 +3,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 #define E 2.71828
+#define MODE_NORMAL 0
+#define MODE_ABSOLUTE 1
 
 layout (local_size_x = 16, local_size_y = 16) in;
 layout (binding = 0, r16) uniform image2D heightmap;
@@ -13,6 +15,8 @@ layout (push_constant) uniform Brush {
     float radius;
     float change;
     float hardness;
+    uint mode;
+    float target;
 } brush;
 
 void main() {
@@ -33,6 +37,9 @@ void main() {
             intensity = -pow(relativeDist, E) + 1;
         }
         intensity *= brush.change;
+        if (brush.mode == MODE_ABSOLUTE) {
+            intensity *= brush.target - height;
+        }
 
         outputHeight = clamp(height + intensity, 0, 1);
     } else {

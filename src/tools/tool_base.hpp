@@ -20,7 +20,7 @@ public:
 
     virtual void onMouseDown(const ToolMouseEvent &event) {};
 
-    virtual void onMouseMove(const ToolMouseEvent &event) {};
+    virtual void onMouseMove(const ToolMouseEvent &event, double delta) {};
 
     virtual void onMouseUp(const ToolMouseEvent &event) {};
 

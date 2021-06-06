@@ -11,11 +11,18 @@ struct Elevation {
     float max;
 };
 
+enum class ShaderTerraformMode : uint32_t {
+    Normal,
+    Absolute
+};
+
 struct TerraformBrushUniform {
     glm::vec2 origin;
     float radius;
     float change;
     float hardness;
+    ShaderTerraformMode mode;
+    float target;
 };
 
 Heightmap::Heightmap(uint32_t width, uint32_t height, Engine::RenderEngine &engine)
@@ -213,7 +220,39 @@ void Heightmap::terraform(TerraformMode mode, const glm::vec2 &pos, float radius
         amount = -amount;
     }
 
-    brushTask->execute(TerraformBrushUniform { pos, radius, amount / range, hardness }, width, height);
+    brushTask->execute(
+        TerraformBrushUniform { pos, radius, amount / range, hardness, ShaderTerraformMode::Normal },
+        width,
+        height
+    );
+    normalMapUpdateTask->execute(Elevation { minElevation, maxElevation }, width, height);
+
+    brushTask->doAfterExecution(
+        [this, pos, radius]() {
+            if (isModified) {
+                invalidateStart.x = std::min(invalidateStart.x, static_cast<int>(std::floor(pos.x - radius)));
+                invalidateStart.y = std::min(invalidateStart.x, static_cast<int>(std::floor(pos.x - radius)));
+                invalidateEnd.x = std::min(invalidateEnd.x, static_cast<int>(std::ceil(pos.x + radius)));
+                invalidateEnd.y = std::min(invalidateEnd.x, static_cast<int>(std::ceil(pos.x + radius)));
+            } else {
+                glm::vec2 offset { radius, radius };
+                invalidateStart = glm::floor(pos - offset);
+                invalidateEnd = glm::ceil(pos + offset);
+                isModified = true;
+            }
+        }
+    );
+}
+
+void Heightmap::terraformTo(float level, const glm::vec2 &pos, float radius, float rate, float hardness) {
+    auto range = maxElevation - minElevation;
+    auto absLevel = (level - minElevation) / range;
+
+    brushTask->execute(
+        TerraformBrushUniform { pos, radius, rate, hardness, ShaderTerraformMode::Absolute, absLevel },
+        width,
+        height
+    );
     normalMapUpdateTask->execute(Elevation { minElevation, maxElevation }, width, height);
 
     brushTask->doAfterExecution(

@@ -10,7 +10,7 @@ public:
 
     const char *getName() override { return "Painter"; };
 
-    void onMouseMove(const ToolMouseEvent &event) override;
+    void onMouseMove(const ToolMouseEvent &event, double delta) override;
 
     void drawToolbarTab() override;
     void onDeactivate() override;

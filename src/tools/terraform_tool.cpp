@@ -5,7 +5,23 @@
 TerraformTool::TerraformTool(std::shared_ptr<Heightmap> heightmap, Scene &scene)
     : heightmap(std::move(heightmap)), scene(scene) {}
 
-void TerraformTool::onMouseMove(const ToolMouseEvent &event) {
+void TerraformTool::onMouseDown(const ToolMouseEvent &event) {
+    if (!event.left) {
+        return;
+    }
+
+    if (mode == Mode::Level) {
+        auto worldCoords = event.getWorldCoordsAtTerrain();
+        if (!worldCoords) {
+            return;
+        }
+
+        auto coords = scene.getHeightmapCoord(*worldCoords);
+        targetHeight = heightmap->getHeightAt(coords->x, coords->y);
+    }
+}
+
+void TerraformTool::onMouseMove(const ToolMouseEvent &event, double delta) {
     if (!event.left) {
         return;
     }
@@ -17,18 +33,35 @@ void TerraformTool::onMouseMove(const ToolMouseEvent &event) {
 
     auto coords = scene.getHeightmapCoord(*worldCoords);
 
-    heightmap->terraform(mode, *coords, activeRadius, activeAmount, activeHardness);
+    switch (mode) {
+        case Mode::Lower:
+            heightmap->terraform(TerraformMode::Subtract, *coords, activeRadius, activeAmount * delta, activeHardness);
+            break;
+        case Mode::Raise:
+            heightmap->terraform(TerraformMode::Add, *coords, activeRadius, activeAmount * delta, activeHardness);
+            break;
+        case Mode::Level:
+            heightmap->terraformTo(targetHeight, *coords, activeRadius, (activeAmount / 50) * delta, activeHardness);
+            break;
+        default:
+            break;
+    }
 }
 
 void TerraformTool::drawToolbarTab() {
     // Modes
-    if (ImGui::Button("Add", { 96, 48 })) {
-        mode = TerraformMode::Add;
+    if (ImGui::Button("Raise", { 96, 48 })) {
+        mode = Mode::Raise;
         activate();
     }
     ImGui::SameLine();
-    if (ImGui::Button("Subtract", { 96, 48 })) {
-        mode = TerraformMode::Subtract;
+    if (ImGui::Button("Lower", { 96, 48 })) {
+        mode = Mode::Lower;
+        activate();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Level", { 96, 48 })) {
+        mode = Mode::Level;
         activate();
     }
 
@@ -43,5 +76,5 @@ void TerraformTool::drawToolbarTab() {
 }
 
 void TerraformTool::onDeactivate() {
-
+    mode = Mode::Inactive;
 }

@@ -39,6 +39,7 @@ public:
     );
 
     void terraform(TerraformMode mode, const glm::vec2 &pos, float radius, float amount, float hardness = 0);
+    void terraformTo(float height, const glm::vec2 &pos, float radius, float rate, float hardness = 0);
 
     bool getIsModified() const { return isModified; }
 
