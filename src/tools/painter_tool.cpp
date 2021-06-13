@@ -29,7 +29,10 @@ void PainterTool::drawToolbarTab() {
 
     // Settings
     ImGui::PushItemWidth(130);
-    ImGui::SliderFloat("Brush size", &activeRadius, 1, 500, "%.0f");
+    if (ImGui::SliderFloat("Brush size", &activeRadius, 1, 500, "%.0f")) {
+        highlight->setRadius(activeRadius);
+    }
+
     ImGui::SameLine();
     ImGui::SliderFloat("Opacity", &activeOpacity, 0, 1, "%.2f");
     ImGui::SameLine();
@@ -39,9 +42,15 @@ void PainterTool::drawToolbarTab() {
 
 void PainterTool::onDeactivate() {
     activeBrushTexture = -1;
+    highlight.reset();
 }
 
 void PainterTool::onMouseMove(const ToolMouseEvent &event, double delta) {
+    if (highlight) {
+        auto pos = event.getWorldCoordsAtTerrain();
+        highlight->setOrigin({ pos->x, pos->y });
+    }
+
     if (event.left) {
         auto pos = event.getWorldCoordsAtTerrain();
 
@@ -49,4 +58,12 @@ void PainterTool::onMouseMove(const ToolMouseEvent &event, double delta) {
             painter->paint({ pos->x, pos->y }, activeRadius, activeBrushTexture, activeOpacity, activeHardness);
         }
     }
+}
+
+std::shared_ptr<Vector::Object> PainterTool::createHighlight() {
+    highlight = std::make_shared<Vector::Circle>(glm::vec2 {}, activeRadius);
+    highlight->setFill(glm::vec4(0, 0, 0, 0));
+    highlight->setStroke(glm::vec4(0.3, 0.62, 0.84, 1));
+    highlight->setStrokeWidth(2);
+    return highlight;
 }

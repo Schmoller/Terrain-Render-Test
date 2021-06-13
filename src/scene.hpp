@@ -10,6 +10,8 @@
 #include "utils/circular_buffer.hpp"
 #include "utils/overhead_camera.hpp"
 #include "terrain_painter.hpp"
+#include "vector/vector_graphics.hpp"
+#include "vector/circle.hpp"
 
 #include "tools/tool_base.hpp"
 
@@ -56,6 +58,9 @@ private:
     glm::vec3 fixedRayDir;
 
     std::unique_ptr<Engine::FPSCamera> debugCamera;
+    std::unique_ptr<Vector::VectorGraphics> vectorGraphics;
+
+    std::shared_ptr<Vector::Circle> testCircle1;
 
     Engine::FPSCamera *activeCamera { nullptr };
 
@@ -72,6 +77,7 @@ private:
     // Tools
     std::vector<std::unique_ptr<ToolBase>> tools;
     ToolBase *activeTool { nullptr };
+    std::shared_ptr<Vector::Object> toolHighlightShape;
     bool isToolMouseDown { false };
 
     // Settings

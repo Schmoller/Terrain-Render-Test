@@ -8,10 +8,21 @@ add_subdirectory(./libs/tech-core)
 include_directories(./libs/tech-core/include ./libs/tech-core/libs/vk-mem-alloc/include ./libs/tech-core/libs/stb ./libs/tech-core/libs/imgui)
 include_directories(./libs/perlin-noise)
 
-add_executable(terrain_test src/main.cpp src/scene.cpp src/scene.hpp src/cdlod/terrain_manager.cpp src/cdlod/terrain_manager.hpp src/cdlod/structures.hpp src/cdlod/lod_tree.hpp src/cdlod/lod_tree.cpp src/heightmap.cpp src/heightmap.hpp src/utils/overhead_camera.cpp src/utils/circular_buffer.hpp src/utils/easing.hpp src/terrain_painter.cpp src/terrain_painter.hpp src/tools/tool_base.cpp src/tools/tool_base.hpp src/tools/painter_tool.cpp src/tools/painter_tool.hpp src/tools/event.hpp src/tools/event.cpp src/tools/terraform_tool.cpp src/tools/terraform_tool.hpp)
+set(VECTOR_SOURCES
+        src/vector/vector_graphics.cpp
+        src/vector/common.cpp
+        src/vector/circle.cpp
+        src/vector/line.cpp
+        src/vector/bezier_curve.cpp
+        )
+
+
+add_executable(terrain_test src/main.cpp src/scene.cpp src/scene.hpp src/cdlod/terrain_manager.cpp src/cdlod/terrain_manager.hpp src/cdlod/structures.hpp src/cdlod/lod_tree.hpp src/cdlod/lod_tree.cpp src/heightmap.cpp src/heightmap.hpp src/utils/overhead_camera.cpp src/utils/circular_buffer.hpp src/utils/easing.hpp src/terrain_painter.cpp src/terrain_painter.hpp src/tools/tool_base.cpp src/tools/tool_base.hpp src/tools/painter_tool.cpp src/tools/painter_tool.hpp src/tools/event.hpp src/tools/event.cpp src/tools/terraform_tool.cpp src/tools/terraform_tool.hpp ${VECTOR_SOURCES})
 target_link_libraries(terrain_test tech)
 
 add_executable(genheightmap tools/heightmap_gen/main.cpp)
+add_executable(vector_test tools/vector_test/main.cpp ${VECTOR_SOURCES})
+target_link_libraries(vector_test tech)
 
 set(SHADER_SRC_DIR ${PROJECT_SOURCE_DIR}/assets/shaders)
 set(SHADER_BIN_DIR ${PROJECT_BINARY_DIR}/assets/shaders)
@@ -41,6 +52,7 @@ add_custom_target(
 )
 
 add_dependencies(terrain_test shaders)
+add_dependencies(vector_test shaders)
 
 # Link resources
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/assets)

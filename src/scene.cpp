@@ -8,6 +8,7 @@
 #include <tech-core/debug.hpp>
 #include <tech-core/shapes/plane.hpp>
 #include <tech-core/shapes/bounding_sphere.hpp>
+#include <tech-core/post_processing.hpp>
 #include <iostream>
 #include <imgui.h>
 
@@ -22,6 +23,15 @@ void Scene::initialize() {
 
     // Initialise the engine
     engine.initialize("Terrain Test");
+
+    vectorGraphics = std::make_unique<Vector::VectorGraphics>(engine);
+
+//    testCircle1 = vectorGraphics->addObject<Vector::Circle>(glm::vec2 {}, 30);
+//
+//    testCircle1->setFill(glm::vec4(0.3, 0.62, 0.84, 0.5));
+//    testCircle1->setStroke(glm::vec4(0.3, 0.62, 0.84, 1));
+//    testCircle1->setStrokeWidth(3);
+//
 
     // Initialise camera
 //    mainCamera = std::make_unique<Engine::FPSCamera>(90, glm::vec3 { 0, 0, 520 }, 0, 0);
@@ -102,6 +112,7 @@ void Scene::run() {
         drawGizmos();
 
         engine.render();
+        vectorGraphics->update(engine);
     }
 }
 
@@ -260,18 +271,17 @@ void Scene::handleControls() {
                 !this->inputManager->isPressed(Engine::Key::eMouseRight)) {
                 isToolMouseDown = false;
             }
-        } else if (isToolMouseDown) {
-            activeTool->onMouseMove(
-                {
-                    MouseButton::None,
-                    *inputManager,
-                    mainCamera->getCamera(),
-                    *cdlod,
-                    mousePos
-                },
-                instantFrameTime
-            );
         }
+        activeTool->onMouseMove(
+            {
+                MouseButton::None,
+                *inputManager,
+                mainCamera->getCamera(),
+                *cdlod,
+                mousePos
+            },
+            instantFrameTime
+        );
     }
 }
 
@@ -684,8 +694,7 @@ void Scene::setActiveTool(ToolBase *tool) {
     if (tool) {
         if (activeTool) {
             if (activeTool != tool) {
-                activeTool->onDeactivate();
-                std::cout << "Tool " << activeTool->getName() << " deactivated" << std::endl;
+                setActiveTool(nullptr);
             } else {
                 // Dont double activate
                 return;
@@ -694,10 +703,19 @@ void Scene::setActiveTool(ToolBase *tool) {
 
         activeTool = tool;
         activeTool->onActivate();
+        auto highlight = activeTool->createHighlight();
+        if (highlight) {
+            vectorGraphics->addObject(highlight);
+            toolHighlightShape = highlight;
+        }
         std::cout << "Tool " << activeTool->getName() << " activated" << std::endl;
     } else {
         if (activeTool) {
             activeTool->onDeactivate();
+            if (toolHighlightShape) {
+                vectorGraphics->removeObject(toolHighlightShape);
+                toolHighlightShape.reset();
+            }
             std::cout << "Tool " << activeTool->getName() << " deactivated" << std::endl;
             activeTool = nullptr;
         }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "event.hpp"
+#include "../vector/common.hpp"
 
 #include <string>
 #include <functional>
@@ -23,6 +24,8 @@ public:
     virtual void onMouseMove(const ToolMouseEvent &event, double delta) {};
 
     virtual void onMouseUp(const ToolMouseEvent &event) {};
+
+    virtual std::shared_ptr<Vector::Object> createHighlight() { return {}; };
 
     virtual void drawToolbarTab() = 0;
 protected:
