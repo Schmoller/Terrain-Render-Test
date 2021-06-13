@@ -16,7 +16,7 @@ class VectorGraphics {
     };
 
 public:
-    explicit VectorGraphics(Engine::RenderEngine &);
+    explicit VectorGraphics(Engine::RenderEngine &, bool only2D = false);
     ~VectorGraphics();
     void update(Engine::RenderEngine &);
 
@@ -26,6 +26,8 @@ public:
 
     bool removeObject(const std::shared_ptr<Vector::Object> &object);
 private:
+    bool use2DOnly { false };
+
     std::shared_ptr<Engine::Effect> effect;
     std::shared_ptr<Engine::Buffer> uniformBuffer;
     std::shared_ptr<Engine::Buffer> vectorUniformBuffer;

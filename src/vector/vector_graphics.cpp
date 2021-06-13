@@ -3,12 +3,10 @@
 #include <tech-core/buffer.hpp>
 #include <tech-core/engine.hpp>
 
-#include "circle.hpp"
-#include <iostream>
-
 namespace Vector {
 
-VectorGraphics::VectorGraphics(Engine::RenderEngine &engine) {
+VectorGraphics::VectorGraphics(Engine::RenderEngine &engine, bool only2D)
+    : use2DOnly(only2D) {
     uniformBuffer = engine.getBufferManager().aquire(
         sizeof(VGUniformBuffer), vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryUsage::eCPUToGPU
     );
@@ -24,8 +22,8 @@ VectorGraphics::VectorGraphics(Engine::RenderEngine &engine) {
         .withShader("assets/shaders/post_processing/vector_draw.spv")
         .bindUniformBuffer(0, 2, uniformBuffer)
         .bindUniformBuffer(0, 3, vectorUniformBuffer)
+        .withShaderConstant(0, use2DOnly)
         .build();
-
 }
 
 VectorGraphics::~VectorGraphics() {
@@ -34,11 +32,14 @@ VectorGraphics::~VectorGraphics() {
 }
 
 void VectorGraphics::update(Engine::RenderEngine &engine) {
-//    const auto *camUniform = engine.getCamera()->getUBO();
-//    auto invViewProj = glm::inverse(camUniform->proj * camUniform->view);
     auto bounds = engine.getScreenBounds();
-//
-//    uniformMapped->inverseViewProj = invViewProj;
+    if (!use2DOnly) {
+        const auto *camUniform = engine.getCamera()->getUBO();
+        auto invViewProj = glm::inverse(camUniform->proj * camUniform->view);
+
+        uniformMapped->inverseViewProj = invViewProj;
+    }
+
     uniformMapped->viewport = { bounds.width(), bounds.height() };
 
     for (auto &object : objects) {
@@ -67,9 +68,7 @@ bool VectorGraphics::addObject(const std::shared_ptr<Vector::Object> &object) {
 }
 
 bool VectorGraphics::removeObject(const std::shared_ptr<Vector::Object> &object) {
-    std::cout << "Removing object " << object->slotIndex << std::endl;
-
-    if (object->slotIndex != NO_SLOT) {
+    if (object->slotIndex == NO_SLOT) {
         return false;
     }
 

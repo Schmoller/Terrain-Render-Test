@@ -65,5 +65,6 @@ std::shared_ptr<Vector::Object> PainterTool::createHighlight() {
     highlight->setFill(glm::vec4(0, 0, 0, 0));
     highlight->setStroke(glm::vec4(0.3, 0.62, 0.84, 1));
     highlight->setStrokeWidth(2);
+    highlight->setStrokePosition(Vector::StrokePosition::Outside);
     return highlight;
 }

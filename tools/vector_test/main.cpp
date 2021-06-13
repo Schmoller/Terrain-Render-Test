@@ -21,10 +21,10 @@ int main() {
         return 1;
     }
 
-    Vector::VectorGraphics graphics(engine);
+    Vector::VectorGraphics graphics(engine, true);
 
     auto testObj = graphics.addObject<Vector::BezierCurve>(
-        glm::vec2(300, 300), glm::vec2(300, 1000), glm::vec2(300, 100));
+        glm::vec2(300, 100), glm::vec2(300, 620), glm::vec2(870, 100));
 //    auto testObj = graphics.addObject<Vector::Line>(glm::vec2(300, 300), glm::vec2(500, 100));
 //    auto testObj = graphics.addObject<Vector::Circle>(glm::vec2(300, 300), 40);
     auto p1Obj = graphics.addObject<Vector::Circle>(glm::vec2(300, 300), 10);
@@ -54,6 +54,21 @@ int main() {
     while (engine.beginFrame()) {
         if (input.wasPressed(Engine::Key::eEscape)) {
             break;
+        }
+
+        if (input.isPressed(Engine::Key::eMouseLeft)) {
+            auto pos = input.getMousePos();
+            testObj->setStart(pos);
+        }
+
+        if (input.isPressed(Engine::Key::eMouseMiddle)) {
+            auto pos = input.getMousePos();
+            testObj->setMid(pos);
+        }
+
+        if (input.isPressed(Engine::Key::eMouseRight)) {
+            auto pos = input.getMousePos();
+            testObj->setEnd(pos);
         }
 
 

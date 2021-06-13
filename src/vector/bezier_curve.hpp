@@ -7,7 +7,7 @@ namespace Vector {
 class BezierCurve final : public Object {
 public:
     BezierCurve();
-    BezierCurve(const glm::vec2 &start, const glm::vec2 &mid, const glm::vec2 &end);
+    BezierCurve(const glm::vec2 &start, const glm::vec2 &mid, const glm::vec2 &end, float lineWidth = 1);
 
     const glm::vec2 getStart() const { return element.p1; }
 

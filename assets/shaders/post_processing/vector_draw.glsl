@@ -5,6 +5,9 @@
 #define EPSILON 0.0000001
 #define PI 3.141593
 #define NO_MINIMUM 100000000
+#define AA_BOUNDARY 0.5
+#define AA_BOUNDARY_HALF AA_BOUNDARY / 2.0f
+#define TRANSPARENT vec4(0, 0, 0, 0)
 
 struct VectorElement {
     uint type;
@@ -29,6 +32,8 @@ struct VectorElement {
 
 #define MAX_ELEMENTS 30
 
+layout (constant_id = 0) const bool use2DMode = false;
+
 layout (input_attachment_index = 0, binding = 0) uniform subpassInput inputColor;
 layout (input_attachment_index = 1, binding = 1) uniform subpassInput inputDepth;
 
@@ -39,20 +44,24 @@ layout (binding = 2) uniform Camera {
     vec2 viewport;
 } camera;
 
-// TODO: This is just a test. We would want an array of many of these
 layout (binding = 3) uniform ElementBinding {
     VectorElement elements[MAX_ELEMENTS];
     uint count;
 } elements;
 
-//vec3 getCurrentWorldPos() {
-//    vec2 ndcSpace = ((gl_FragCoord.xy / camera.viewport) * 2) - vec2(1, 1);
-//    float depth = subpassLoad(inputDepth).r;
-//    vec4 worldPos = camera.inverseViewProj * vec4(ndcSpace, depth, 1);
-//    worldPos /= worldPos.w;
-//
-//    return worldPos.xyz;
-//}
+vec3 getCurrentWorldPos() {
+    if (!use2DMode) {
+        vec2 ndcSpace = ((gl_FragCoord.xy / camera.viewport) * 2) - vec2(1, 1);
+        float depth = subpassLoad(inputDepth).r;
+        vec4 worldPos = camera.inverseViewProj * vec4(ndcSpace, depth, 1);
+        worldPos /= worldPos.w;
+
+        return worldPos.xyz;
+    } else {
+        return gl_FragCoord.xyz;
+    }
+}
+
 
 float circleDistance(vec2 pos, vec2 origin, float radius) {
     return length(pos - origin)- radius;
@@ -85,28 +94,6 @@ vec2 bezierPoint(vec2 start, vec2 mid, vec2 end, float t) {
 float bezierDistance(vec2 pos, vec2 start, vec2 mid, vec2 end, float size) {
     vec2 A = mid - start;
     vec2 B = start - 2 * mid + end;
-
-    //    vec2 minPos = vec2(min(start.x, min(mid.x, end.x)), min(start.y, min(mid.y, end.y)));
-    //    vec2 maxPos = vec2(max(start.x, max(mid.x, end.x)), max(start.y, max(mid.y, end.y)));
-    //
-    //    if (minPos.x == mid.x || maxPos.x == mid.x) {
-    //        float u = -A.x / B.x;// u where getTan(u).x == 0
-    //        u = (1 - u) * (1 - u) * start.x + 2 * u * (1 - u) * mid.x + u * u * end.x;
-    //        if (minPos.x == mid.x) {
-    //            minPos.x = u;
-    //        } else {
-    //            maxPos.x = u;
-    //        };
-    //    }
-    //    if (minPos.y == mid.y || maxPos.y == mid.y) {
-    //        float u = -A.y / B.y;// u where getTan(u).y == 0
-    //        u = (1 - u) * (1 - u) * start.y + 2 * u * (1 - u) * mid.y + u * u * end.y;
-    //        if (minPos.y == mid.y) {
-    //            minPos.y = u;
-    //        } else {
-    //            maxPos.y = u;
-    //        }
-    //    }
 
     vec2 startToPos = start - pos;
     float a = B.x * B.x + B.y * B.y;
@@ -201,44 +188,75 @@ vec4 fillOrStroke(float dist, vec4 fill, vec4 stroke, float strokeWidth, uint st
     switch (strokePosition) {
         default :
         case SP_INSIDE: {
-            if (dist < -strokeWidth) {
+            if (dist < -strokeWidth - AA_BOUNDARY_HALF) {
                 return fill;
-            } else if (dist < 0) {
+            } else if (dist < -strokeWidth + AA_BOUNDARY_HALF) {
+                float amount = (dist - (-strokeWidth - AA_BOUNDARY_HALF)) / AA_BOUNDARY;
+                if (strokeWidth > 0) {
+                    return mix(fill, stroke, amount);
+                } else {
+                    return mix(fill, TRANSPARENT, amount);
+                }
+            } else if (dist < 0 - AA_BOUNDARY_HALF) {
                 return stroke;
+            } else if (dist < 0 + AA_BOUNDARY_HALF) {
+                float amount = (dist - (-AA_BOUNDARY_HALF)) / AA_BOUNDARY;
+                return mix(stroke, TRANSPARENT, amount);
             } else {
-                return vec4(0, 0, 0, 0);
+                return TRANSPARENT;
             }
         }
         case SP_OUTSIDE: {
-            if (dist < 0) {
+            if (dist < 0 - AA_BOUNDARY_HALF) {
                 return fill;
-            } else if (dist < strokeWidth) {
+            } else if (dist < 0 + AA_BOUNDARY_HALF) {
+                float amount = (dist - (-AA_BOUNDARY_HALF)) / AA_BOUNDARY;
+                if (strokeWidth > 0) {
+                    return mix(fill, stroke, amount);
+                } else {
+                    return mix(fill, TRANSPARENT, amount);
+                }
+            } else if (dist < strokeWidth - AA_BOUNDARY_HALF) {
                 return stroke;
+            } else if (dist < strokeWidth + AA_BOUNDARY_HALF) {
+                float amount = (dist - (strokeWidth - AA_BOUNDARY_HALF)) / AA_BOUNDARY;
+                return mix(stroke, TRANSPARENT, amount);
             } else {
-                return vec4(0, 0, 0, 0);
+                return TRANSPARENT;
             }
         }
         case SP_CENTER: {
-            if (dist < -strokeWidth / 2) {
+            if (dist < -strokeWidth / 2 - AA_BOUNDARY_HALF) {
                 return fill;
-            } else if (dist < strokeWidth / 2) {
+            } else if (dist < -strokeWidth / 2 + AA_BOUNDARY_HALF) {
+                float amount = (dist - (-strokeWidth / 2 - AA_BOUNDARY_HALF)) / AA_BOUNDARY;
+                if (strokeWidth > 0) {
+                    return mix(fill, stroke, amount);
+                } else {
+                    return mix(fill, TRANSPARENT, amount);
+                }
+            } else if (dist < strokeWidth / 2 - AA_BOUNDARY_HALF) {
                 return stroke;
+            } else if (dist < strokeWidth / 2 + AA_BOUNDARY_HALF) {
+                float amount = (dist - (strokeWidth / 2 - AA_BOUNDARY_HALF)) / AA_BOUNDARY;
+                return mix(stroke, TRANSPARENT, amount);
             } else {
-                return vec4(0, 0, 0, 0);
+                return TRANSPARENT;
             }
         }
     }
 }
 
-
 void main() {
     vec4 existingColor = subpassLoad(inputColor);
-    //    vec2 pos = getCurrentWorldPos().xy;
-    vec2 pos = gl_FragCoord.xy;
+    vec2 pos = getCurrentWorldPos().xy;
 
     vec4 result = existingColor;
     for (uint i = 0; i < elements.count; ++i) {
         VectorElement element = elements.elements[i];
+        element.fill.rgb *= element.fill.a;
+        element.stroke.rgb *= element.stroke.a;
+
         float distToObject;
         switch (element.type) {
             case VE_CIRCLE: {
@@ -260,10 +278,7 @@ void main() {
         }
 
         vec4 intermediateResult = fillOrStroke(distToObject, element.fill, element.stroke, element.strokeWidth, element.strokePosition);
-        //        if (element.type == VE_BEZIER) {
-        //            intermediateResult = vec4(distToObject, -distToObject, 0, 1);
-        //        }
-        result = mix(result, intermediateResult, intermediateResult.a);
+        result = vec4(intermediateResult.rgb + (result.rgb * (1 - intermediateResult.a)), 1);
     }
 
     outColor = result;
