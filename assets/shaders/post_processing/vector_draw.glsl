@@ -249,6 +249,9 @@ vec4 fillOrStroke(float dist, vec4 fill, vec4 stroke, float strokeWidth, uint st
 
 void main() {
     vec4 existingColor = subpassLoad(inputColor);
+
+    // Force no alpha because it causes blending issues
+    existingColor.a = 1;
     vec2 pos = getCurrentWorldPos().xy;
 
     vec4 result = existingColor;
