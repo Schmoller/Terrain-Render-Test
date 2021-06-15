@@ -27,7 +27,6 @@ public:
     const char *getName() override { return "Node Tool"; }
 
     void onMouseDown(const ToolMouseEvent &event) override;
-    void onMouseUp(const ToolMouseEvent &event) override;
     void onMouseMove(const ToolMouseEvent &event, double delta) override;
 
     std::shared_ptr<Vector::Object> createHighlight() override;
@@ -49,7 +48,10 @@ private:
     State state { State::Idle };
     std::shared_ptr<Nodes::Node> startNode;
     bool isNewStartNode { false };
+    bool autoMidpoint { false };
     std::optional<glm::vec2> midpoint;
+    // For curves, this tracks the normalized direction of the (mid to end segment)
+    glm::vec2 previousSegmentDirection;
 
     // Visual helpers
     std::shared_ptr<Vector::Circle> startMarker;
@@ -62,6 +64,8 @@ private:
 
     void updateMarkers();
     void cancelPlacement();
+    void clearMarkers();
+    glm::vec2 calculateMidpoint(const glm::vec2 &end);
 };
 
 

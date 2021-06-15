@@ -2,6 +2,7 @@
 #include "../node/node.hpp"
 #include "../node/edge.hpp"
 #include "../theme.hpp"
+#include "../utils/intersection.hpp"
 #include <imgui.h>
 
 NodeTool::NodeTool(Vector::VectorGraphics &vectorRenderer, Nodes::Graph &graph)
@@ -25,7 +26,8 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
             startMarker = vectorRenderer.addObject<Vector::Circle>(node2dCoord, startNode->getRoughRadius());
             Theme::normal(*startMarker);
 
-            if (edgeMode == EdgeMode::Freeform) {
+            autoMidpoint = false;
+            if (edgeMode == EdgeMode::Freeform || edgeMode == EdgeMode::Curve) {
                 state = State::PlacingMidpoint;
                 // This is a line until the midpoint is placed. Then it becomes a bezier curve
                 edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
@@ -34,9 +36,6 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
                 state = State::PlacingEnd;
                 edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
                 Theme::normal(*edgeMarker);
-            } else {
-                // TODO: This need to be either midpoint or end depending on whether its the first of the chain or not
-                return;
             }
 
             updateMarkers();
@@ -62,6 +61,14 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
             auto endNode = std::make_shared<Nodes::Node>(*coords);
 
             // TODO: Create the stuff
+            if (midpoint) {
+                previousSegmentDirection = glm::normalize(glm::vec2 { coords->x, coords->y } - *midpoint);
+            } else {
+                previousSegmentDirection = glm::normalize(
+                    glm::vec2 { coords->x, coords->y } -
+                        glm::vec2(startNode->getPosition().x, startNode->getPosition().y)
+                );
+            }
 
             // Cleanup
             cancelPlacement();
@@ -72,6 +79,7 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
             startMarker = vectorRenderer.addObject<Vector::Circle>(node2dCoord, startNode->getRoughRadius());
             Theme::normal(*startMarker);
 
+            autoMidpoint = false;
             if (edgeMode == EdgeMode::Straight) {
                 state = State::PlacingEnd;
                 edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
@@ -81,16 +89,36 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
                 edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
                 Theme::informational(*edgeMarker);
             } else if (edgeMode == EdgeMode::Curve) {
-                // TODO: Do curve mode
-                cancelPlacement();
+                autoMidpoint = true;
+                state = State::PlacingEnd;
+                midpoint = { startNode->getPosition().x, startNode->getPosition().y };
+
+                edgeMarker = vectorRenderer.addObject<Vector::BezierCurve>(
+                    glm::vec2 { startNode->getPosition().x, startNode->getPosition().y },
+                    *midpoint,
+                    *midpoint,
+                    edgeWidth
+                );
+            }
+
+            updateMarkers();
+        }
+    } else if (event.button == MouseButton::Right) {
+        if (state == State::PlacingEnd) {
+            if (edgeMode == EdgeMode::Freeform || (edgeMode == EdgeMode::Curve && !autoMidpoint)) {
+                midpoint = {};
+                state = State::PlacingMidpoint;
+                clearMarkers();
+
+                glm::vec2 start { startNode->getPosition().x, startNode->getPosition().y };
+                edgeMarker = vectorRenderer.addObject<Vector::Line>(start, start, edgeWidth);
+                Theme::informational(*edgeMarker);
+
+                startMarker = vectorRenderer.addObject<Vector::Circle>(start, startNode->getRoughRadius());
+                Theme::normal(*startMarker);
                 return;
             }
         }
-    }
-}
-
-void NodeTool::onMouseUp(const ToolMouseEvent &event) {
-    if (event.button == MouseButton::Right) {
         cancelPlacement();
     }
 }
@@ -101,8 +129,16 @@ void NodeTool::onMouseMove(const ToolMouseEvent &event, double delta) {
         return;
     }
 
+    if (!startNode) {
+        return;
+    }
+
     if (state == State::Idle || state == State::PlacingEnd) {
         // TODO: Just highlight nodes nearby and edges being hovered
+    }
+
+    if (autoMidpoint) {
+        midpoint = calculateMidpoint({ coords->x, coords->y });
     }
 
     if (state == State::PlacingMidpoint) {
@@ -112,6 +148,7 @@ void NodeTool::onMouseMove(const ToolMouseEvent &event, double delta) {
         if (midpoint) {
             auto edge = std::static_pointer_cast<Vector::BezierCurve>(edgeMarker);
             edge->setEnd({ coords->x, coords->y });
+            edge->setMid(*midpoint);
         } else {
             auto edge = std::static_pointer_cast<Vector::Line>(edgeMarker);
             edge->setEnd({ coords->x, coords->y });
@@ -202,6 +239,8 @@ void NodeTool::updateMarkers() {
             midMarker.curve->setStrokePosition(Vector::StrokePosition::Inside);
         }
 
+        midMarker.curve->setOrigin(*midpoint);
+
         if (direction > 0) {
             // Toward normal. Curve on outside
             midMarker.curve->setEndAngle(std::atan2(dirToMid.y, dirToMid.x) + M_PI_2);
@@ -220,7 +259,10 @@ void NodeTool::cancelPlacement() {
     isNewStartNode = false;
     startNode.reset();
 
-    // Clean up markers
+    clearMarkers();
+}
+
+void NodeTool::clearMarkers() {
     if (startMarker) {
         vectorRenderer.removeObject(startMarker);
         startMarker.reset();
@@ -250,3 +292,25 @@ void NodeTool::cancelPlacement() {
 void NodeTool::onDeactivate() {
     cancelPlacement();
 }
+
+glm::vec2 NodeTool::calculateMidpoint(const glm::vec2 &end) {
+    glm::vec2 start { startNode->getPosition() };
+    glm::vec2 startToEndNormal = glm::normalize(end - start);
+    startToEndNormal = { startToEndNormal.y, -startToEndNormal.x };
+
+    glm::vec2 startToEndMiddle = (start + end) / 2.0f;
+
+    float alignment = glm::dot(startToEndNormal, previousSegmentDirection);
+    if (alignment < 0) {
+        // It would face us backwards
+        startToEndNormal *= -1;
+    }
+
+    auto intersection = intersect(start, previousSegmentDirection, startToEndMiddle, startToEndNormal);
+    if (intersection) {
+        return *intersection;
+    }
+
+    return start;
+}
+
