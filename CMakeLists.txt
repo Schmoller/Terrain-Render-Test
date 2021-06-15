@@ -14,6 +14,7 @@ set(VECTOR_SOURCES
         src/vector/circle.cpp
         src/vector/line.cpp
         src/vector/bezier_curve.cpp
+        src/vector/arc_line.cpp src/vector/arc_line.hpp
         )
 
 

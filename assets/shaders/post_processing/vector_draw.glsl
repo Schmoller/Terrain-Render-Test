@@ -25,6 +25,7 @@ struct VectorElement {
 #define VE_CIRCLE 0
 #define VE_LINE 1
 #define VE_BEZIER 2
+#define VE_ARCLINE 3
 
 #define SP_INSIDE 0
 #define SP_OUTSIDE 1
@@ -64,7 +65,7 @@ vec3 getCurrentWorldPos() {
 
 
 float circleDistance(vec2 pos, vec2 origin, float radius) {
-    return length(pos - origin)- radius;
+    return length(pos - origin) - radius;
 }
 
 float lineDistance(vec2 pos, vec2 start, vec2 end, float size) {
@@ -184,6 +185,47 @@ float bezierDistance(vec2 pos, vec2 start, vec2 mid, vec2 end, float size) {
     return minDist - size;
 }
 
+float arclineDistance(vec2 pos, vec2 origin, float radius, float angleStart, float angleEnd, float size) {
+    vec2 posDirection = normalize(pos - origin);
+
+    // Angle of position to origin. -PI to PI. 0 is +X, +PI/2 is +Y
+    float angle;
+    if (posDirection.x == 0) {
+        if (posDirection.y > 0) {
+            angle = PI/2;
+        } else {
+            angle = -PI/2;
+        }
+    } else {
+        angle = atan(posDirection.y, posDirection.x);
+    }
+
+    float minDistance;
+
+    vec2 posOnArc = origin + posDirection * radius;
+    if (angleStart > angleEnd) {
+        if (angle >= angleStart || angle <= angleEnd) {
+            minDistance = length(pos - posOnArc) - size;
+        } else {
+            minDistance = NO_MINIMUM;
+        }
+    } else {
+        if (angle >= angleStart && angle <= angleEnd) {
+            minDistance = length(pos - posOnArc) - size;
+        } else {
+            minDistance = NO_MINIMUM;
+        }
+    }
+
+    vec2 startPosition = origin + vec2(cos(angleStart), sin(angleStart)) * radius;
+    vec2 endPosition = origin + vec2(cos(angleEnd), sin(angleEnd)) * radius;
+
+    minDistance = min(minDistance, circleDistance(pos, startPosition, size));
+    minDistance = min(minDistance, circleDistance(pos, endPosition, size));
+
+    return minDistance;
+}
+
 vec4 fillOrStroke(float dist, vec4 fill, vec4 stroke, float strokeWidth, uint strokePosition) {
     switch (strokePosition) {
         default :
@@ -272,6 +314,10 @@ void main() {
             }
             case VE_BEZIER: {
                 distToObject = bezierDistance(pos, element.p1, element.p2, element.p3, element.f1 / 2);
+                break;
+            }
+            case VE_ARCLINE: {
+                distToObject = arclineDistance(pos, element.p1, element.f1, element.p2.x, element.p2.y, element.p3.x / 2);
                 break;
             }
             default : {

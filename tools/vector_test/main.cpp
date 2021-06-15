@@ -6,6 +6,7 @@
 #include "../../src/vector/circle.hpp"
 #include "../../src/vector/line.hpp"
 #include "../../src/vector/bezier_curve.hpp"
+#include "../../src/vector/arc_line.hpp"
 #include <glm/glm.hpp>
 #include <imgui.h>
 
@@ -23,76 +24,94 @@ int main() {
 
     Vector::VectorGraphics graphics(engine, true);
 
-    auto testObj = graphics.addObject<Vector::BezierCurve>(
-        glm::vec2(300, 100), glm::vec2(300, 620), glm::vec2(870, 100));
+    auto testObj = graphics.addObject<Vector::ArcLine>(
+        glm::vec2(300, 100), 50, 0, M_PI_2, 40
+    );
 //    auto testObj = graphics.addObject<Vector::Line>(glm::vec2(300, 300), glm::vec2(500, 100));
 //    auto testObj = graphics.addObject<Vector::Circle>(glm::vec2(300, 300), 40);
-    auto p1Obj = graphics.addObject<Vector::Circle>(glm::vec2(300, 300), 10);
-    auto p2Obj = graphics.addObject<Vector::Circle>(glm::vec2(300, 300), 10);
-    auto p3Obj = graphics.addObject<Vector::Circle>(glm::vec2(300, 300), 10);
+//    auto p1Obj = graphics.addObject<Vector::Circle>(glm::vec2(300, 300), 10);
+//    auto p2Obj = graphics.addObject<Vector::Circle>(glm::vec2(300, 300), 10);
+//    auto p3Obj = graphics.addObject<Vector::Circle>(glm::vec2(300, 300), 10);
 
     testObj->setStrokeWidth(3);
     testObj->setStroke(glm::vec4(1, 0, 0, 1));
     testObj->setFill(glm::vec4(0, 1, 0, 1));
-
-    p1Obj->setStrokeWidth(3);
-    p1Obj->setStroke(glm::vec4(0, 0, 1, 1));
-    p1Obj->setFill(glm::vec4(0, 0, 0, 0));
-    p1Obj->setOrigin(testObj->getStart());
-
-    p2Obj->setStrokeWidth(3);
-    p2Obj->setStroke(glm::vec4(0, 1, 1, 1));
-    p2Obj->setFill(glm::vec4(0, 0, 0, 0));
-    p2Obj->setOrigin(testObj->getMid());
-
-    p3Obj->setStrokeWidth(3);
-    p3Obj->setStroke(glm::vec4(1, 0, 1, 1));
-    p3Obj->setFill(glm::vec4(0, 0, 0, 0));
-    p3Obj->setOrigin(testObj->getEnd());
+//
+//    p1Obj->setStrokeWidth(3);
+//    p1Obj->setStroke(glm::vec4(0, 0, 1, 1));
+//    p1Obj->setFill(glm::vec4(0, 0, 0, 0));
+//    p1Obj->setOrigin(testObj->getStart());
+//
+//    p2Obj->setStrokeWidth(3);
+//    p2Obj->setStroke(glm::vec4(0, 1, 1, 1));
+//    p2Obj->setFill(glm::vec4(0, 0, 0, 0));
+//    p2Obj->setOrigin(testObj->getMid());
+//
+//    p3Obj->setStrokeWidth(3);
+//    p3Obj->setStroke(glm::vec4(1, 0, 1, 1));
+//    p3Obj->setFill(glm::vec4(0, 0, 0, 0));
+//    p3Obj->setOrigin(testObj->getEnd());
 
     auto &input = engine.getInputManager();
     while (engine.beginFrame()) {
         if (input.wasPressed(Engine::Key::eEscape)) {
             break;
         }
-
-        if (input.isPressed(Engine::Key::eMouseLeft)) {
-            auto pos = input.getMousePos();
-            testObj->setStart(pos);
-        }
-
-        if (input.isPressed(Engine::Key::eMouseMiddle)) {
-            auto pos = input.getMousePos();
-            testObj->setMid(pos);
-        }
-
-        if (input.isPressed(Engine::Key::eMouseRight)) {
-            auto pos = input.getMousePos();
-            testObj->setEnd(pos);
-        }
+//
+//        if (input.isPressed(Engine::Key::eMouseLeft)) {
+//            auto pos = input.getMousePos();
+//            testObj->setStart(pos);
+//        }
+//
+//        if (input.isPressed(Engine::Key::eMouseMiddle)) {
+//            auto pos = input.getMousePos();
+//            testObj->setMid(pos);
+//        }
+//
+//        if (input.isPressed(Engine::Key::eMouseRight)) {
+//            auto pos = input.getMousePos();
+//            testObj->setEnd(pos);
+//        }
 
 
         ImGui::Begin("Control");
 
-        glm::vec2 p0 = testObj->getStart();
-        glm::vec2 p1 = testObj->getMid();
-        glm::vec2 p2 = testObj->getEnd();
+        glm::vec2 p0 = testObj->getOrigin();
+        float startAngle = testObj->getStartAngle();
+        float endAngle = testObj->getEndAngle();
+//
+//        glm::vec2 p0 = testObj->getStart();
+//        glm::vec2 p1 = testObj->getMid();
+//        glm::vec2 p2 = testObj->getEnd();
         if (ImGui::SliderFloat2("P0", &p0.x, 0, 1920)) {
-            testObj->setStart(p0);
-            p1Obj->setOrigin(p0);
+            testObj->setOrigin(p0);
+//            testObj->setStart(p0);
+//            p1Obj->setOrigin(p0);
         }
-        if (ImGui::SliderFloat2("P1", &p1.x, 0, 1920)) {
-            testObj->setMid(p1);
-            p2Obj->setOrigin(p1);
-        }
-        if (ImGui::SliderFloat2("P2", &p2.x, 0, 1920)) {
-            testObj->setEnd(p2);
-            p3Obj->setOrigin(p2);
+//        if (ImGui::SliderFloat2("P1", &p1.x, 0, 1920)) {
+//            testObj->setMid(p1);
+//            p2Obj->setOrigin(p1);
+//        }
+//        if (ImGui::SliderFloat2("P2", &p2.x, 0, 1920)) {
+//            testObj->setEnd(p2);
+//            p3Obj->setOrigin(p2);
+//        }
+//
+        float radius = testObj->getRadius();
+        if (ImGui::DragFloat("Radius", &radius, 1, 1, 100000)) {
+            testObj->setRadius(radius);
         }
 
         float width = testObj->getLineWidth();
         if (ImGui::DragFloat("Line Width", &width, 1, 1, 100000)) {
             testObj->setLineWidth(width);
+        }
+
+        if (ImGui::SliderAngle("Start angle", &startAngle)) {
+            testObj->setStartAngle(startAngle);
+        }
+        if (ImGui::SliderAngle("End angle", &endAngle)) {
+            testObj->setEndAngle(endAngle);
         }
 
         ImGui::Separator();

@@ -20,7 +20,11 @@ enum class VectorObjectType : uint32_t {
     /**
      * Uses p1, p2, p3 as start, mid, and end points
      */
-    BezierCurve
+    BezierCurve,
+    /**
+     * Uses p1 as origin, f1 as radius, p2 as { start angle, end angle }, p3.x as size
+     */
+    ArcLine
 };
 
 struct VectorElement {
