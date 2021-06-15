@@ -11,9 +11,9 @@
 #include "utils/overhead_camera.hpp"
 #include "terrain_painter.hpp"
 #include "vector/vector_graphics.hpp"
-#include "vector/circle.hpp"
 
 #include "tools/tool_base.hpp"
+#include "node/graph.hpp"
 
 const uint32_t MaxFrameTimePoints = 200;
 
@@ -59,8 +59,7 @@ private:
 
     std::unique_ptr<Engine::FPSCamera> debugCamera;
     std::unique_ptr<Vector::VectorGraphics> vectorGraphics;
-
-    std::shared_ptr<Vector::Circle> testCircle1;
+    std::unique_ptr<Nodes::Graph> nodeGraph;
 
     Engine::FPSCamera *activeCamera { nullptr };
 

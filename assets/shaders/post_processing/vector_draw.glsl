@@ -5,7 +5,9 @@
 #define EPSILON 0.0000001
 #define PI 3.141593
 #define NO_MINIMUM 100000000
-#define AA_BOUNDARY 0.5
+// FIXME: Make the AA based on the screen space coords, not the world space coords
+//#define AA_BOUNDARY 0.5
+#define AA_BOUNDARY 0.01
 #define AA_BOUNDARY_HALF AA_BOUNDARY / 2.0f
 #define TRANSPARENT vec4(0, 0, 0, 0)
 

@@ -1,6 +1,7 @@
 #include "scene.hpp"
 #include "tools/painter_tool.hpp"
 #include "tools/terraform_tool.hpp"
+#include "tools/node_tool.hpp"
 
 #include <tech-core/camera.hpp>
 #include <tech-core/subsystem/debug.hpp>
@@ -64,9 +65,12 @@ void Scene::initialize() {
 
     initTextures();
 
+    nodeGraph = std::make_unique<Nodes::Graph>();
+
     // Init tools
     addTool(std::make_unique<PainterTool>(painter));
     addTool(std::make_unique<TerraformTool>(heightmap, *this));
+    addTool(std::make_unique<NodeTool>(*vectorGraphics, *nodeGraph));
 }
 
 void Scene::run() {

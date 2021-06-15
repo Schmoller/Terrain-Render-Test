@@ -17,8 +17,13 @@ set(VECTOR_SOURCES
         src/vector/arc_line.cpp src/vector/arc_line.hpp
         )
 
+set(NODE_SOURCES
+        src/node/graph.cpp
+        src/node/edge.cpp
+        src/node/node.cpp
+        )
 
-add_executable(terrain_test src/main.cpp src/scene.cpp src/scene.hpp src/cdlod/terrain_manager.cpp src/cdlod/terrain_manager.hpp src/cdlod/structures.hpp src/cdlod/lod_tree.hpp src/cdlod/lod_tree.cpp src/heightmap.cpp src/heightmap.hpp src/utils/overhead_camera.cpp src/utils/circular_buffer.hpp src/utils/easing.hpp src/terrain_painter.cpp src/terrain_painter.hpp src/tools/tool_base.cpp src/tools/tool_base.hpp src/tools/painter_tool.cpp src/tools/painter_tool.hpp src/tools/event.hpp src/tools/event.cpp src/tools/terraform_tool.cpp src/tools/terraform_tool.hpp ${VECTOR_SOURCES})
+add_executable(terrain_test src/main.cpp src/scene.cpp src/scene.hpp src/cdlod/terrain_manager.cpp src/cdlod/terrain_manager.hpp src/cdlod/structures.hpp src/cdlod/lod_tree.hpp src/cdlod/lod_tree.cpp src/heightmap.cpp src/heightmap.hpp src/utils/overhead_camera.cpp src/utils/circular_buffer.hpp src/utils/easing.hpp src/terrain_painter.cpp src/terrain_painter.hpp src/tools/tool_base.cpp src/tools/tool_base.hpp src/tools/painter_tool.cpp src/tools/painter_tool.hpp src/tools/event.hpp src/tools/event.cpp src/tools/terraform_tool.cpp src/tools/terraform_tool.hpp ${VECTOR_SOURCES} ${NODE_SOURCES} src/tools/node_tool.cpp src/tools/node_tool.hpp src/theme.cpp)
 target_link_libraries(terrain_test tech)
 
 add_executable(genheightmap tools/heightmap_gen/main.cpp)
