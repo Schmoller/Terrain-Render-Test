@@ -56,4 +56,26 @@ void Graph::addEdgeGraphics(const Edge *edge) {
     edgeShapes.emplace(edge, shape);
 }
 
+std::shared_ptr<Node> Graph::getNodeAt(const glm::vec3 &coord) const {
+    for (auto &node : nodes) {
+        auto toNode = coord - node->getPosition();
+        if (glm::length(toNode) < node->getRoughRadius()) {
+            return node;
+        }
+    }
+
+    return {};
+}
+
+void Graph::getNodesWithin(const glm::vec3 &coord, float radius, std::vector<std::shared_ptr<Node>> &outNodes) const {
+    outNodes.clear();
+
+    for (auto &node : nodes) {
+        auto toNode = coord - node->getPosition();
+        if (glm::length(toNode) < radius) {
+            outNodes.push_back(node);
+        }
+    }
+}
+
 }

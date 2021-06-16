@@ -5,6 +5,7 @@
 #include "../theme.hpp"
 #include "../utils/intersection.hpp"
 #include <imgui.h>
+#include <unordered_set>
 
 NodeTool::NodeTool(Vector::VectorGraphics &vectorRenderer, Nodes::Graph &graph)
     : vectorRenderer(vectorRenderer), graph(graph) {
@@ -19,9 +20,13 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
         }
 
         if (state == State::Idle) {
-            // TODO: Get existing node at position or create if not
-            startNode = std::make_shared<Nodes::Node>(*coords);
-            isNewStartNode = true;
+            startNode = graph.getNodeAt(*coords);
+            if (!startNode) {
+                startNode = std::make_shared<Nodes::Node>(*coords);
+                isNewStartNode = true;
+            } else {
+                isNewStartNode = false;
+            }
 
             glm::vec2 node2dCoord { startNode->getPosition().x, startNode->getPosition().y };
             startMarker = vectorRenderer.addObject<Vector::Circle>(node2dCoord, startNode->getRoughRadius());
@@ -57,10 +62,16 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
 
             updateMarkers();
         } else if (state == State::PlacingEnd) {
-            // TODO: Get existing node at position or create if not
+            bool isNewEndNode;
+            std::shared_ptr<Nodes::Node> endNode;
 
-            bool isNewEndNode = true;
-            auto endNode = std::make_shared<Nodes::Node>(*coords);
+            endNode = graph.getNodeAt(*coords);
+            if (endNode) {
+                isNewEndNode = false;
+            } else {
+                endNode = std::make_shared<Nodes::Node>(*coords);
+                isNewEndNode = true;
+            }
 
             if (isNewStartNode) {
                 graph.addNode(startNode);
@@ -140,15 +151,18 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
 void NodeTool::onMouseMove(const ToolMouseEvent &event, double delta) {
     auto coords = event.getWorldCoordsAtTerrain();
     if (!coords) {
-        return;
-    }
-
-    if (!startNode) {
+        clearNearbyMarkers();
         return;
     }
 
     if (state == State::Idle || state == State::PlacingEnd) {
-        // TODO: Just highlight nodes nearby and edges being hovered
+        updateNearbyMarkers(*coords, true);
+    } else {
+        clearNearbyMarkers();
+    }
+
+    if (!startNode) {
+        return;
     }
 
     if (autoMidpoint) {
@@ -326,5 +340,47 @@ glm::vec2 NodeTool::calculateMidpoint(const glm::vec2 &end) {
     }
 
     return start;
+}
+
+void NodeTool::updateNearbyMarkers(const glm::vec3 &position, bool allowEdges) {
+    updateNearbyNodeMarkers(position);
+}
+
+void NodeTool::updateNearbyNodeMarkers(const glm::vec3 &position) {
+    std::vector<std::shared_ptr<Nodes::Node>> nearby;
+
+    graph.getNodesWithin(position, 20, nearby);
+
+    std::unordered_set<const Nodes::Node *> unvisitedNodes(nearbyNodeMarkers.size());
+    for (auto &pair : nearbyNodeMarkers) {
+        unvisitedNodes.insert(pair.first);
+    }
+
+    for (auto &node : nearby) {
+        unvisitedNodes.erase(node.get());
+
+        auto it = nearbyNodeMarkers.find(node.get());
+        if (it == nearbyNodeMarkers.end()) {
+            auto marker = vectorRenderer.addObject<Vector::Circle>(node->getPosition(), node->getRoughRadius());
+            Theme::normal(*marker);
+            nearbyNodeMarkers.emplace(node.get(), marker);
+        }
+    }
+
+    for (auto unvisited : unvisitedNodes) {
+        auto it = nearbyNodeMarkers.find(unvisited);
+        if (it != nearbyNodeMarkers.end()) {
+            nearbyNodeMarkers.erase(unvisited);
+            vectorRenderer.removeObject(it->second);
+        }
+    }
+}
+
+void NodeTool::clearNearbyMarkers() {
+    for (auto &pair : nearbyNodeMarkers) {
+        vectorRenderer.removeObject(pair.second);
+    }
+
+    nearbyNodeMarkers.clear();
 }
 

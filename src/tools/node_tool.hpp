@@ -62,10 +62,17 @@ private:
         std::shared_ptr<Vector::ArcLine> curve;
     } midMarker;
 
+    // Markers to show nearby nodes you can select
+    std::unordered_map<const Nodes::Node *, std::shared_ptr<Vector::Circle>> nearbyNodeMarkers;
+
     void updateMarkers();
     void cancelPlacement();
     void clearMarkers();
     glm::vec2 calculateMidpoint(const glm::vec2 &end);
+
+    void updateNearbyMarkers(const glm::vec3 &position, bool allowEdges);
+    void updateNearbyNodeMarkers(const glm::vec3 &position);
+    void clearNearbyMarkers();
 };
 
 

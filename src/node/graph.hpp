@@ -14,7 +14,7 @@ class Graph {
 public:
     explicit Graph(Vector::VectorGraphics &graphics);
     std::shared_ptr<Node> getNodeAt(const glm::vec3 &coord) const;
-    void getNodesWithin(const glm::vec3 &coord, float radius, std::vector<std::shared_ptr<Node>> nodes) const;
+    void getNodesWithin(const glm::vec3 &coord, float radius, std::vector<std::shared_ptr<Node>> &nodes) const;
 
     void addNode(const std::shared_ptr<Node> &node);
     void link(const std::shared_ptr<Node> &start, const std::shared_ptr<Node> &end, float edgeWidth);
