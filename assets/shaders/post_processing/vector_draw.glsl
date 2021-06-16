@@ -33,7 +33,7 @@ struct VectorElement {
 #define SP_OUTSIDE 1
 #define SP_CENTER 2
 
-#define MAX_ELEMENTS 30
+#define MAX_ELEMENTS 100
 
 layout (constant_id = 0) const bool use2DMode = false;
 

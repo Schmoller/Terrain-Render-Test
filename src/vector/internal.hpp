@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-#define MAX_ELEMENTS 30
+#define MAX_ELEMENTS 100
 #define NO_SLOT 0xFFFFFFFF
 
 namespace Internal {
