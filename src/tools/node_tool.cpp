@@ -1,6 +1,7 @@
 #include "node_tool.hpp"
 #include "../node/node.hpp"
 #include "../node/edge.hpp"
+#include "../node/graph.hpp"
 #include "../theme.hpp"
 #include "../utils/intersection.hpp"
 #include <imgui.h>
@@ -58,12 +59,24 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
         } else if (state == State::PlacingEnd) {
             // TODO: Get existing node at position or create if not
 
+            bool isNewEndNode = true;
             auto endNode = std::make_shared<Nodes::Node>(*coords);
 
-            // TODO: Create the stuff
+            if (isNewStartNode) {
+                graph.addNode(startNode);
+            }
+
+            if (isNewEndNode) {
+                graph.addNode(endNode);
+            }
+
             if (midpoint) {
+                graph.link(startNode, endNode, edgeWidth, *midpoint);
+
                 previousSegmentDirection = glm::normalize(glm::vec2 { coords->x, coords->y } - *midpoint);
             } else {
+                graph.link(startNode, endNode, edgeWidth);
+
                 previousSegmentDirection = glm::normalize(
                     glm::vec2 { coords->x, coords->y } -
                         glm::vec2(startNode->getPosition().x, startNode->getPosition().y)
@@ -75,6 +88,7 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
 
             // Now allow chaining
             startNode = endNode;
+            isNewStartNode = false;
             glm::vec2 node2dCoord { startNode->getPosition().x, startNode->getPosition().y };
             startMarker = vectorRenderer.addObject<Vector::Circle>(node2dCoord, startNode->getRoughRadius());
             Theme::normal(*startMarker);

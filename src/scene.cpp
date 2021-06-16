@@ -65,7 +65,7 @@ void Scene::initialize() {
 
     initTextures();
 
-    nodeGraph = std::make_unique<Nodes::Graph>();
+    nodeGraph = std::make_unique<Nodes::Graph>(*vectorGraphics);
 
     // Init tools
     addTool(std::make_unique<PainterTool>(painter));

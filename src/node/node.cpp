@@ -34,4 +34,8 @@ uint32_t Node::getEdgeCount() const {
     return edges.size();
 }
 
+void Node::addEdge(const std::shared_ptr<Edge> &edge) {
+    edges.emplace_back(NodeLink { edge });
+}
+
 }

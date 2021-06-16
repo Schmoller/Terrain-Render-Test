@@ -2,6 +2,7 @@
 
 #include "forward.hpp"
 #include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 #include <memory>
 #include <vector>
 
@@ -29,6 +30,7 @@ public:
     std::shared_ptr<Edge> getEdge(uint32_t) const;
     uint32_t getEdgeCount() const;
 
+    void addEdge(const std::shared_ptr<Edge> &edge);
 private:
     glm::vec3 position;
     std::vector<NodeLink> edges;
