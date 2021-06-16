@@ -74,6 +74,7 @@ bool VectorGraphics::removeObject(const std::shared_ptr<Vector::Object> &object)
 
     if (object->slotIndex < objects.size() - 1) {
         for (auto index = object->slotIndex + 1; index < objects.size(); ++index) {
+            --objects[index]->slotIndex;
             objects[index - 1] = objects[index];
         }
 
