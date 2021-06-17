@@ -1,5 +1,6 @@
 #include "painter_tool.hpp"
 #include <imgui.h>
+#include <tech-core/texture/common.hpp>
 
 #include <utility>
 
@@ -19,7 +20,7 @@ void PainterTool::drawToolbarTab() {
             padding = 1;
         }
 
-        if (ImGui::ImageButton(texture, { 48, 48 }, {}, { 1, 1 }, padding)) {
+        if (ImGui::ImageButton(texture->toImGui(), { 48, 48 }, {}, { 1, 1 }, padding)) {
             activeBrushTexture = index;
             activate();
         }

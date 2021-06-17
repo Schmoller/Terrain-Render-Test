@@ -10,7 +10,7 @@ class TerrainPainter {
 public:
     explicit TerrainPainter(Engine::RenderEngine &);
     void initialize();
-    void setTextures(const std::vector<Engine::Texture *> &);
+    void setTextures(const std::vector<const Engine::Texture *> &);
 
     uint32_t getTextureCount() const { return 5; }
 
@@ -23,7 +23,7 @@ public:
 
     std::shared_ptr<Engine::Image> getSplatMap() const { return splatMap; };
 
-    const std::vector<Engine::Texture *> &getTextures() const { return textures; }
+    const std::vector<const Engine::Texture *> &getTextures() const { return textures; }
 
     void drawGui();
 private:
@@ -40,7 +40,7 @@ private:
     glm::vec2 scale { 1, 1 };
     glm::vec2 offset;
 
-    std::vector<Engine::Texture *> textures;
+    std::vector<const Engine::Texture *> textures;
 };
 
 

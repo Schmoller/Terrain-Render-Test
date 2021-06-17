@@ -99,24 +99,21 @@ void Heightmap::calculateMinMax(
 void Heightmap::transferImage(Engine::RenderEngine &engine, uint16_t *pixelData) {
     auto task = engine.getTaskManager().createTask();
     vk::DeviceSize pixelSize = width * height * sizeof(uint16_t);
-
+    auto stagingBuffer = engine.getBufferManager().aquireStaging(pixelSize);
+    stagingBuffer->copyIn(pixelData);
 
     task->execute(
-        [this, pixelData, pixelSize](vk::CommandBuffer buffer) {
+        [this, &stagingBuffer](vk::CommandBuffer buffer) {
             bitmapImage->transition(buffer, vk::ImageLayout::eTransferDstOptimal);
-            bitmapImage->transfer(buffer, pixelData, pixelSize);
-            bitmapImage->transferOut(buffer, readbackBuffer.get());
+            bitmapImage->transferIn(buffer, *stagingBuffer);
             bitmapImage->transition(buffer, vk::ImageLayout::eGeneral);
+            bitmapImage->transferOut(buffer, readbackBuffer.get());
 
             normalImage->transition(buffer, vk::ImageLayout::eGeneral);
         }
     );
 
-    task->executeWhenComplete(
-        [this]() {
-            bitmapImage->completeTransfer();
-        }
-    );
+    task->freeWhenDone(std::move(stagingBuffer));
 
     engine.getTaskManager().submitTask(std::move(task));
 }

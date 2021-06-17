@@ -10,6 +10,8 @@
 #include <tech-core/shapes/plane.hpp>
 #include <tech-core/shapes/bounding_sphere.hpp>
 #include <tech-core/post_processing.hpp>
+#include <tech-core/texture/manager.hpp>
+#include <tech-core/texture/builder.hpp>
 #include <iostream>
 #include <imgui.h>
 
@@ -546,7 +548,7 @@ void Scene::initializeHeightmap() {
 }
 
 void Scene::initTextures() {
-    std::vector<Engine::Texture *> textures;
+    std::vector<const Engine::Texture *> textures;
     textures.push_back(
         engine.getTextureManager().createTexture("green")
             .fromFile("assets/textures/green.png")

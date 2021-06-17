@@ -1,4 +1,5 @@
 #include "terrain_painter.hpp"
+#include <tech-core/texture/common.hpp>
 #include <glm/glm.hpp>
 #include <iostream>
 #include <imgui.h>
@@ -47,7 +48,7 @@ void TerrainPainter::initialize() {
     engine.getTaskManager().submitTask(std::move(task));
 }
 
-void TerrainPainter::setTextures(const std::vector<Engine::Texture *> &paintTextures) {
+void TerrainPainter::setTextures(const std::vector<const Engine::Texture *> &paintTextures) {
     // Validate that all textures are usable. Unfortunately we have these requirements:
     // - All textures must exist in same array
     // - Textures must be contiguous from index 0

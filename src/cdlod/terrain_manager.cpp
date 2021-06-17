@@ -2,6 +2,7 @@
 #include <tech-core/vertex.hpp>
 #include <tech-core/camera.hpp>
 #include <tech-core/pipeline.hpp>
+#include <tech-core/texture/manager.hpp>
 #include <vector>
 #include <iostream>
 #include "../utils/instance_buffer.inl"
