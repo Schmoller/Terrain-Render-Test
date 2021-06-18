@@ -17,10 +17,14 @@ public:
     void getNodesWithin(const glm::vec3 &coord, float radius, std::vector<std::shared_ptr<Node>> &nodes) const;
 
     void addNode(const std::shared_ptr<Node> &node);
+    void removeNode(const std::shared_ptr<Node> &node);
     void link(const std::shared_ptr<Node> &start, const std::shared_ptr<Node> &end, float edgeWidth);
     void link(
         const std::shared_ptr<Node> &start, const std::shared_ptr<Node> &end, float edgeWidth, const glm::vec2 &midpoint
     );
+    void unlink(const std::shared_ptr<Edge> &edge);
+
+    void invalidateNode(const Node *);
 
 private:
     Vector::VectorGraphics &graphics;

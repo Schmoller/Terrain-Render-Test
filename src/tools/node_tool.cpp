@@ -13,110 +13,44 @@ NodeTool::NodeTool(Vector::VectorGraphics &vectorRenderer, Nodes::Graph &graph)
 }
 
 void NodeTool::onMouseDown(const ToolMouseEvent &event) {
-    if (event.button == MouseButton::Left) {
-        auto coords = event.getWorldCoordsAtTerrain();
-        if (!coords) {
-            return;
-        }
+    auto coords = event.getWorldCoordsAtTerrain();
+    if (!coords) {
+        return;
+    }
+    if (mode == ToolMode::Place) {
+        if (event.button == MouseButton::Left) {
+            if (state == State::Idle) {
+                startNode = graph.getNodeAt(*coords);
+                if (!startNode) {
+                    startNode = std::make_shared<Nodes::Node>(*coords);
+                    isNewStartNode = true;
+                } else {
+                    isNewStartNode = false;
+                }
 
-        if (state == State::Idle) {
-            startNode = graph.getNodeAt(*coords);
-            if (!startNode) {
-                startNode = std::make_shared<Nodes::Node>(*coords);
-                isNewStartNode = true;
-            } else {
-                isNewStartNode = false;
-            }
+                glm::vec2 node2dCoord { startNode->getPosition().x, startNode->getPosition().y };
+                startMarker = vectorRenderer.addObject<Vector::Circle>(node2dCoord, startNode->getRoughRadius());
+                Theme::normal(*startMarker);
 
-            glm::vec2 node2dCoord { startNode->getPosition().x, startNode->getPosition().y };
-            startMarker = vectorRenderer.addObject<Vector::Circle>(node2dCoord, startNode->getRoughRadius());
-            Theme::normal(*startMarker);
+                autoMidpoint = false;
+                if (edgeMode == EdgeMode::Freeform || edgeMode == EdgeMode::Curve) {
+                    state = State::PlacingMidpoint;
+                    // This is a line until the midpoint is placed. Then it becomes a bezier curve
+                    edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
+                    Theme::informational(*edgeMarker);
+                } else if (edgeMode == EdgeMode::Straight) {
+                    state = State::PlacingEnd;
+                    edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
+                    Theme::normal(*edgeMarker);
+                }
 
-            autoMidpoint = false;
-            if (edgeMode == EdgeMode::Freeform || edgeMode == EdgeMode::Curve) {
-                state = State::PlacingMidpoint;
-                // This is a line until the midpoint is placed. Then it becomes a bezier curve
-                edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
-                Theme::informational(*edgeMarker);
-            } else if (edgeMode == EdgeMode::Straight) {
+                updateMarkers();
+            } else if (state == State::PlacingMidpoint) {
+                midpoint = glm::vec2(coords->x, coords->y);
                 state = State::PlacingEnd;
-                edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
-                Theme::normal(*edgeMarker);
-            }
 
-            updateMarkers();
-        } else if (state == State::PlacingMidpoint) {
-            midpoint = glm::vec2(coords->x, coords->y);
-            state = State::PlacingEnd;
-
-            // Switch line out with bezier curve now
-            vectorRenderer.removeObject(edgeMarker);
-
-            edgeMarker = vectorRenderer.addObject<Vector::BezierCurve>(
-                glm::vec2 { startNode->getPosition().x, startNode->getPosition().y },
-                *midpoint,
-                *midpoint,
-                edgeWidth
-            );
-            Theme::normal(*edgeMarker);
-
-            updateMarkers();
-        } else if (state == State::PlacingEnd) {
-            bool isNewEndNode;
-            std::shared_ptr<Nodes::Node> endNode;
-
-            endNode = graph.getNodeAt(*coords);
-            if (endNode) {
-                isNewEndNode = false;
-            } else {
-                endNode = std::make_shared<Nodes::Node>(*coords);
-                isNewEndNode = true;
-            }
-
-            if (isNewStartNode) {
-                graph.addNode(startNode);
-            }
-
-            if (isNewEndNode) {
-                graph.addNode(endNode);
-            }
-
-            if (midpoint) {
-                graph.link(startNode, endNode, edgeWidth, *midpoint);
-
-                previousSegmentDirection = glm::normalize(glm::vec2 { coords->x, coords->y } - *midpoint);
-            } else {
-                graph.link(startNode, endNode, edgeWidth);
-
-                previousSegmentDirection = glm::normalize(
-                    glm::vec2 { coords->x, coords->y } -
-                        glm::vec2(startNode->getPosition().x, startNode->getPosition().y)
-                );
-            }
-
-            // Cleanup
-            cancelPlacement();
-
-            // Now allow chaining
-            startNode = endNode;
-            isNewStartNode = false;
-            glm::vec2 node2dCoord { startNode->getPosition().x, startNode->getPosition().y };
-            startMarker = vectorRenderer.addObject<Vector::Circle>(node2dCoord, startNode->getRoughRadius());
-            Theme::normal(*startMarker);
-
-            autoMidpoint = false;
-            if (edgeMode == EdgeMode::Straight) {
-                state = State::PlacingEnd;
-                edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
-                Theme::normal(*edgeMarker);
-            } else if (edgeMode == EdgeMode::Freeform) {
-                state = State::PlacingMidpoint;
-                edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
-                Theme::informational(*edgeMarker);
-            } else if (edgeMode == EdgeMode::Curve) {
-                autoMidpoint = true;
-                state = State::PlacingEnd;
-                midpoint = { startNode->getPosition().x, startNode->getPosition().y };
+                // Switch line out with bezier curve now
+                vectorRenderer.removeObject(edgeMarker);
 
                 edgeMarker = vectorRenderer.addObject<Vector::BezierCurve>(
                     glm::vec2 { startNode->getPosition().x, startNode->getPosition().y },
@@ -124,27 +58,107 @@ void NodeTool::onMouseDown(const ToolMouseEvent &event) {
                     *midpoint,
                     edgeWidth
                 );
-            }
+                Theme::normal(*edgeMarker);
 
-            updateMarkers();
-        }
-    } else if (event.button == MouseButton::Right) {
-        if (state == State::PlacingEnd) {
-            if (edgeMode == EdgeMode::Freeform || (edgeMode == EdgeMode::Curve && !autoMidpoint)) {
-                midpoint = {};
-                state = State::PlacingMidpoint;
-                clearMarkers();
+                updateMarkers();
+            } else if (state == State::PlacingEnd) {
+                bool isNewEndNode;
+                std::shared_ptr<Nodes::Node> endNode;
 
-                glm::vec2 start { startNode->getPosition().x, startNode->getPosition().y };
-                edgeMarker = vectorRenderer.addObject<Vector::Line>(start, start, edgeWidth);
-                Theme::informational(*edgeMarker);
+                endNode = graph.getNodeAt(*coords);
+                if (endNode) {
+                    isNewEndNode = false;
+                } else {
+                    endNode = std::make_shared<Nodes::Node>(*coords);
+                    isNewEndNode = true;
+                }
 
-                startMarker = vectorRenderer.addObject<Vector::Circle>(start, startNode->getRoughRadius());
+                if (isNewStartNode) {
+                    graph.addNode(startNode);
+                }
+
+                if (isNewEndNode) {
+                    graph.addNode(endNode);
+                }
+
+                if (midpoint) {
+                    graph.link(startNode, endNode, edgeWidth, *midpoint);
+
+                    previousSegmentDirection = glm::normalize(glm::vec2 { coords->x, coords->y } - *midpoint);
+                } else {
+                    graph.link(startNode, endNode, edgeWidth);
+
+                    previousSegmentDirection = glm::normalize(
+                        glm::vec2 { coords->x, coords->y } -
+                            glm::vec2(startNode->getPosition().x, startNode->getPosition().y)
+                    );
+                }
+
+                // Cleanup
+                cancelPlacement();
+
+                // Now allow chaining
+                startNode = endNode;
+                isNewStartNode = false;
+                glm::vec2 node2dCoord { startNode->getPosition().x, startNode->getPosition().y };
+                startMarker = vectorRenderer.addObject<Vector::Circle>(node2dCoord, startNode->getRoughRadius());
                 Theme::normal(*startMarker);
-                return;
+
+                autoMidpoint = false;
+                if (edgeMode == EdgeMode::Straight) {
+                    state = State::PlacingEnd;
+                    edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
+                    Theme::normal(*edgeMarker);
+                } else if (edgeMode == EdgeMode::Freeform) {
+                    state = State::PlacingMidpoint;
+                    edgeMarker = vectorRenderer.addObject<Vector::Line>(node2dCoord, node2dCoord, edgeWidth);
+                    Theme::informational(*edgeMarker);
+                } else if (edgeMode == EdgeMode::Curve) {
+                    autoMidpoint = true;
+                    state = State::PlacingEnd;
+                    midpoint = { startNode->getPosition().x, startNode->getPosition().y };
+
+                    edgeMarker = vectorRenderer.addObject<Vector::BezierCurve>(
+                        glm::vec2 { startNode->getPosition().x, startNode->getPosition().y },
+                        *midpoint,
+                        *midpoint,
+                        edgeWidth
+                    );
+                }
+
+                updateMarkers();
+            }
+        } else if (event.button == MouseButton::Right) {
+            if (state == State::PlacingEnd) {
+                if (edgeMode == EdgeMode::Freeform || (edgeMode == EdgeMode::Curve && !autoMidpoint)) {
+                    midpoint = {};
+                    state = State::PlacingMidpoint;
+                    clearMarkers();
+
+                    glm::vec2 start { startNode->getPosition().x, startNode->getPosition().y };
+                    edgeMarker = vectorRenderer.addObject<Vector::Line>(start, start, edgeWidth);
+                    Theme::informational(*edgeMarker);
+
+                    startMarker = vectorRenderer.addObject<Vector::Circle>(start, startNode->getRoughRadius());
+                    Theme::normal(*startMarker);
+                    return;
+                }
+            }
+            cancelPlacement();
+        }
+    } else if (mode == ToolMode::Remove) {
+        if (event.button == MouseButton::Left) {
+            auto node = graph.getNodeAt(*coords);
+            if (node) {
+                graph.removeNode(node);
             }
         }
-        cancelPlacement();
+    } else if (mode == ToolMode::Move) {
+        if (event.button == MouseButton::Left) {
+            if (!startNode) {
+                startNode = graph.getNodeAt(*coords);
+            }
+        }
     }
 }
 
@@ -155,35 +169,54 @@ void NodeTool::onMouseMove(const ToolMouseEvent &event, double delta) {
         return;
     }
 
-    if (state == State::Idle || state == State::PlacingEnd) {
+    if (mode == ToolMode::Move || mode == ToolMode::Remove ||
+        (mode == ToolMode::Place && (state == State::Idle || state == State::PlacingEnd))) {
         updateNearbyMarkers(*coords, true);
     } else {
         clearNearbyMarkers();
     }
 
-    if (!startNode) {
-        return;
-    }
+    if (mode == ToolMode::Place) {
+        if (!startNode) {
+            return;
+        }
 
-    if (autoMidpoint) {
-        midpoint = calculateMidpoint({ coords->x, coords->y });
-    }
+        if (autoMidpoint) {
+            midpoint = calculateMidpoint({ coords->x, coords->y });
+        }
 
-    if (state == State::PlacingMidpoint) {
-        auto edge = std::static_pointer_cast<Vector::Line>(edgeMarker);
-        edge->setEnd({ coords->x, coords->y });
-    } else if (state == State::PlacingEnd) {
-        if (midpoint) {
-            auto edge = std::static_pointer_cast<Vector::BezierCurve>(edgeMarker);
-            edge->setEnd({ coords->x, coords->y });
-            edge->setMid(*midpoint);
-        } else {
+        if (state == State::PlacingMidpoint) {
             auto edge = std::static_pointer_cast<Vector::Line>(edgeMarker);
             edge->setEnd({ coords->x, coords->y });
+        } else if (state == State::PlacingEnd) {
+            if (midpoint) {
+                auto edge = std::static_pointer_cast<Vector::BezierCurve>(edgeMarker);
+                edge->setEnd({ coords->x, coords->y });
+                edge->setMid(*midpoint);
+            } else {
+                auto edge = std::static_pointer_cast<Vector::Line>(edgeMarker);
+                edge->setEnd({ coords->x, coords->y });
+            }
+        }
+
+        updateMarkers();
+    } else if (mode == ToolMode::Move) {
+        if (event.left) {
+            if (startNode) {
+                startNode->setPosition(*coords);
+                auto it = nearbyNodeMarkers.find(startNode.get());
+                if (it != nearbyNodeMarkers.end()) {
+                    it->second->setOrigin(startNode->getPosition());
+                }
+            }
         }
     }
+}
 
-    updateMarkers();
+void NodeTool::onMouseUp(const ToolMouseEvent &event) {
+    if (mode == ToolMode::Move && event.button == MouseButton::Left) {
+        startNode.reset();
+    }
 }
 
 std::shared_ptr<Vector::Object> NodeTool::createHighlight() {
@@ -193,12 +226,26 @@ std::shared_ptr<Vector::Object> NodeTool::createHighlight() {
 void NodeTool::drawToolbarTab() {
     if (ImGui::Button("Thin edge")) {
         edgeWidth = 5;
+        mode = ToolMode::Place;
         cancelPlacement();
         activate();
     }
     ImGui::SameLine();
     if (ImGui::Button("Thick edge")) {
         edgeWidth = 10;
+        mode = ToolMode::Place;
+        cancelPlacement();
+        activate();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Remove")) {
+        mode = ToolMode::Remove;
+        cancelPlacement();
+        activate();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Move")) {
+        mode = ToolMode::Move;
         cancelPlacement();
         activate();
     }
@@ -319,6 +366,7 @@ void NodeTool::clearMarkers() {
 
 void NodeTool::onDeactivate() {
     cancelPlacement();
+    mode = ToolMode::Idle;
 }
 
 glm::vec2 NodeTool::calculateMidpoint(const glm::vec2 &end) {

@@ -1,5 +1,6 @@
 #include "node.hpp"
 #include "edge.hpp"
+#include "graph.hpp"
 
 namespace Nodes {
 
@@ -36,6 +37,34 @@ uint32_t Node::getEdgeCount() const {
 
 void Node::addEdge(const std::shared_ptr<Edge> &edge) {
     edges.emplace_back(NodeLink { edge });
+    invalidate();
+}
+
+void Node::removeEdge(const std::shared_ptr<Edge> &edge) {
+    auto it = edges.begin();
+    while (it != edges.end()) {
+        if (it->edge == edge) {
+            edges.erase(it);
+            break;
+        }
+        ++it;
+    }
+    invalidate();
+}
+
+void Node::setPosition(const glm::vec3 &pos) {
+    position = pos;
+    invalidate();
+}
+
+void Node::onAdd(Graph &graph) {
+    owner = &graph;
+}
+
+void Node::invalidate() {
+    if (owner) {
+        owner->invalidateNode(this);
+    }
 }
 
 }

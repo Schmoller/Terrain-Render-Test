@@ -22,6 +22,8 @@ class Node {
 public:
     explicit Node(glm::vec3 position);
 
+    void setPosition(const glm::vec3 &);
+
     glm::vec3 getPosition() const { return position; };
     float getRoughRadius() const;
 
@@ -31,9 +33,16 @@ public:
     uint32_t getEdgeCount() const;
 
     void addEdge(const std::shared_ptr<Edge> &edge);
+    void removeEdge(const std::shared_ptr<Edge> &edge);
+
+    void onAdd(Graph &);
 private:
     glm::vec3 position;
     std::vector<NodeLink> edges;
+
+    Graph *owner { nullptr };
+
+    void invalidate();
 };
 
 }
