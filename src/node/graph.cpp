@@ -7,8 +7,8 @@
 
 namespace Nodes {
 
-Graph::Graph(Vector::VectorGraphics &graphics)
-    : graphics(graphics) {
+Graph::Graph(Vector::VectorGraphics &graphics, RoadDisplayManager &display)
+    : graphics(graphics), display(display) {
 
 }
 
@@ -49,7 +49,7 @@ void Graph::link(const std::shared_ptr<Node> &start, const std::shared_ptr<Node>
     start->addEdge(edge);
     end->addEdge(edge);
 
-    addEdgeGraphics(edge.get());
+    addEdgeGraphics(edge);
 }
 
 void Graph::link(
@@ -59,7 +59,7 @@ void Graph::link(
     start->addEdge(edge);
     end->addEdge(edge);
 
-    addEdgeGraphics(edge.get());
+    addEdgeGraphics(edge);
 }
 
 void Graph::unlink(const std::shared_ptr<Edge> &edge) {
@@ -81,9 +81,15 @@ void Graph::unlink(const std::shared_ptr<Edge> &edge) {
         graphics.removeObject(it->second);
         edgeShapes.erase(it);
     }
+
+    auto objectIt = edgeObjects.find(edge.get());
+    if (objectIt != edgeObjects.end()) {
+        display.remove(objectIt->second);
+        edgeObjects.erase(objectIt);
+    }
 }
 
-void Graph::addEdgeGraphics(const Edge *edge) {
+void Graph::addEdgeGraphics(const std::shared_ptr<Edge> &edge) {
     std::shared_ptr<Vector::Object> shape;
 
     if (edge->isStraight()) {
@@ -98,7 +104,12 @@ void Graph::addEdgeGraphics(const Edge *edge) {
     shape->setStrokePosition(Vector::StrokePosition::Center);
     shape->setStrokeWidth(1);
 
-    edgeShapes.emplace(edge, shape);
+    edgeShapes.emplace(edge.get(), shape);
+
+    auto object = display.createForEdge(edge);
+    if (object) {
+        edgeObjects.emplace(edge.get(), object);
+    }
 }
 
 std::shared_ptr<Node> Graph::getNodeAt(const glm::vec3 &coord) const {

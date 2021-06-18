@@ -14,6 +14,7 @@
 
 #include "tools/tool_base.hpp"
 #include "node/graph.hpp"
+#include "road_display_manager.hpp"
 
 const uint32_t MaxFrameTimePoints = 200;
 
@@ -59,7 +60,6 @@ private:
 
     std::unique_ptr<Engine::FPSCamera> debugCamera;
     std::unique_ptr<Vector::VectorGraphics> vectorGraphics;
-    std::unique_ptr<Nodes::Graph> nodeGraph;
 
     Engine::FPSCamera *activeCamera { nullptr };
 
@@ -84,6 +84,10 @@ private:
 
     // Various terrain algorithms
     Terrain::CDLOD::TerrainManager *cdlod { nullptr };
+
+    // Roads
+    std::unique_ptr<Nodes::Graph> nodeGraph;
+    std::unique_ptr<RoadDisplayManager> roadDisplay;
 
     bool isMainCameraActive() const { return activeCamera == &mainCamera.get()->getCamera(); }
 

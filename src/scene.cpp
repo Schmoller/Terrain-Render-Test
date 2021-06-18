@@ -6,6 +6,8 @@
 #include <tech-core/camera.hpp>
 #include <tech-core/subsystem/debug.hpp>
 #include <tech-core/subsystem/imgui.hpp>
+#include <tech-core/subsystem/objects.hpp>
+#include <tech-core/subsystem/light.hpp>
 #include <tech-core/debug.hpp>
 #include <tech-core/shapes/plane.hpp>
 #include <tech-core/shapes/bounding_sphere.hpp>
@@ -22,6 +24,8 @@ void Scene::initialize() {
     engine.addSubsystem(Engine::Subsystem::DebugSubsystem::ID);
     engine.addSubsystem(Terrain::CDLOD::TerrainManager::ID);
     engine.addSubsystem(Engine::Subsystem::ImGuiSubsystem::ID);
+    engine.addSubsystem(Engine::Subsystem::LightSubsystem::ID);
+    engine.addSubsystem(Engine::Subsystem::ObjectSubsystem::ID);
 
 
     // Initialise the engine
@@ -67,7 +71,9 @@ void Scene::initialize() {
 
     initTextures();
 
-    nodeGraph = std::make_unique<Nodes::Graph>(*vectorGraphics);
+    roadDisplay = std::make_unique<RoadDisplayManager>(engine);
+
+    nodeGraph = std::make_unique<Nodes::Graph>(*vectorGraphics, *roadDisplay);
 
     // Init tools
     addTool(std::make_unique<PainterTool>(painter));

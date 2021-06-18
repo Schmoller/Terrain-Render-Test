@@ -7,12 +7,13 @@
 #include <glm/glm.hpp>
 #include "../vector/vector_graphics.hpp"
 #include "../vector/circle.hpp"
+#include "../road_display_manager.hpp"
 
 namespace Nodes {
 
 class Graph {
 public:
-    explicit Graph(Vector::VectorGraphics &graphics);
+    Graph(Vector::VectorGraphics &graphics, RoadDisplayManager &display);
     std::shared_ptr<Node> getNodeAt(const glm::vec3 &coord) const;
     void getNodesWithin(const glm::vec3 &coord, float radius, std::vector<std::shared_ptr<Node>> &nodes) const;
 
@@ -27,15 +28,18 @@ public:
     void invalidateNode(const Node *);
 
 private:
+    RoadDisplayManager &display;
     Vector::VectorGraphics &graphics;
 
     std::vector<std::shared_ptr<Node>> nodes;
+
+    std::unordered_map<const Edge *, std::shared_ptr<Engine::Object>> edgeObjects;
 
     // Debug visual output
     std::unordered_map<const Node *, std::shared_ptr<Vector::Circle>> nodeShapes;
     std::unordered_map<const Edge *, std::shared_ptr<Vector::Object>> edgeShapes;
 
-    void addEdgeGraphics(const Edge *);
+    void addEdgeGraphics(const std::shared_ptr<Edge> &);
 };
 
 }

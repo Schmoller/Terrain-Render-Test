@@ -63,3 +63,4 @@ add_dependencies(vector_test shaders)
 # Link resources
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/assets)
 file(CREATE_LINK ${PROJECT_SOURCE_DIR}/assets/textures ${PROJECT_BINARY_DIR}/assets/textures SYMBOLIC)
+file(CREATE_LINK ${PROJECT_SOURCE_DIR}/assets/models ${PROJECT_BINARY_DIR}/assets/models SYMBOLIC)
