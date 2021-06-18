@@ -143,6 +143,8 @@ void Graph::invalidateNode(const Node *node) {
     for (auto index = 0; index < node->getEdgeCount(); ++index) {
         auto edge = node->getEdge(index);
 
+        edge->invalidate();
+
         auto edgeShapeIt = edgeShapes.find(edge.get());
         if (edgeShapeIt != edgeShapes.end()) {
             auto shape = edgeShapeIt->second;
