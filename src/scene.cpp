@@ -596,6 +596,7 @@ void Scene::drawGUI() {
 
     if (ImGui::Checkbox("Wireframe", &wireframe)) {
         cdlod->setWireframe(wireframe);
+        engine.getSubsystem(Engine::Subsystem::ObjectSubsystem::ID)->setWireframe(wireframe);
     }
 
     if (ImGui::CollapsingHeader("CD LOD", ImGuiTreeNodeFlags_DefaultOpen)) {
