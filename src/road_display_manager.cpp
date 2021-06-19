@@ -6,18 +6,25 @@
 #include <tech-core/engine.hpp>
 
 RoadDisplayManager::RoadDisplayManager(Engine::RenderEngine &engine)
-    : objectSystem(*engine.getSubsystem(Engine::Subsystem::ObjectSubsystem::ID)) {
+    : engine(engine), objectSystem(*engine.getSubsystem(Engine::Subsystem::ObjectSubsystem::ID)) {
 
     roadMaterial = engine.createMaterial({ "road-test", "gray", "", "", true });
+    roadModel.load("assets/models/roads/test.obj");
+
     roadMesh = engine.createStaticMesh<Engine::Vertex>("road-test")
-        .fromModel("assets/models/roads/test.obj")
+        .fromModel(roadModel)
         .build();
 }
 
 std::shared_ptr<Engine::Object> RoadDisplayManager::createForEdge(const std::shared_ptr<Nodes::Edge> &edge) {
+    auto mesh = std::make_shared<RoadMesh>(engine, roadModel, edge);
+    edgeMeshes[edge] = mesh;
+
+    mesh->generate();
+
     return objectSystem.createObject()
         .withPosition(edge->getStart())
-        .withMesh(roadMesh)
+        .withMesh(mesh->getMesh())
         .withMaterial(roadMaterial)
         .build();
 }
@@ -29,4 +36,11 @@ std::shared_ptr<Engine::Object> RoadDisplayManager::createForNode(const std::sha
 
 void RoadDisplayManager::remove(const std::shared_ptr<Engine::Object> &object) {
     objectSystem.removeObject(object);
+}
+
+void RoadDisplayManager::invalidate(const std::shared_ptr<Nodes::Edge> &edge) {
+    auto it = edgeMeshes.find(edge);
+    if (it != edgeMeshes.end()) {
+        it->second->invalidate();
+    }
 }

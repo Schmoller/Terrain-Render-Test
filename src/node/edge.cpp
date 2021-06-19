@@ -80,6 +80,17 @@ glm::vec3 Edge::getPointAt(float offset) const {
     }
 }
 
+glm::vec3 Edge::getTangentAt(float offset) const {
+    auto t = offset / length;
+    auto linearTangent = glm::normalize(getEnd() - getStart());
+    if (isStraight()) {
+        return linearTangent;
+    } else {
+        auto derivative = derivativeAt(t);
+        return glm::normalize(glm::vec3 { derivative, linearTangent.z });
+    }
+}
+
 void Edge::updateLength() {
     if (isStraight()) {
         length = glm::length(getEnd() - getStart());

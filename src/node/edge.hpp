@@ -29,6 +29,7 @@ public:
     float getLength() const { return length; }
 
     glm::vec3 getPointAt(float length) const;
+    glm::vec3 getTangentAt(float length) const;
 
 private:
     float width { 1 };

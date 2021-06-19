@@ -49,6 +49,8 @@ void Graph::link(const std::shared_ptr<Node> &start, const std::shared_ptr<Node>
     start->addEdge(edge);
     end->addEdge(edge);
 
+    edge->invalidate();
+
     addEdgeGraphics(edge);
 }
 
@@ -58,6 +60,8 @@ void Graph::link(
     auto edge = std::make_shared<Edge>(start, end, edgeWidth, midpoint);
     start->addEdge(edge);
     end->addEdge(edge);
+
+    edge->invalidate();
 
     addEdgeGraphics(edge);
 }
@@ -99,8 +103,8 @@ void Graph::addEdgeGraphics(const std::shared_ptr<Edge> &edge) {
             edge->getStart(), *edge->getMidpoint(), edge->getEnd(), edge->getWidth());
     }
 
-    shape->setFill({ 0.2, 0.2, 0.2, 1 });
-    shape->setStroke({ 0.6, 0.6, 0.6, 1 });
+    shape->setFill({ 0.2, 0.2, 0.2, 0.2 });
+    shape->setStroke({ 0.6, 0.6, 0.6, 0.2 });
     shape->setStrokePosition(Vector::StrokePosition::Center);
     shape->setStrokeWidth(1);
 
@@ -144,6 +148,12 @@ void Graph::invalidateNode(const Node *node) {
         auto edge = node->getEdge(index);
 
         edge->invalidate();
+        display.invalidate(edge);
+
+        auto objectIt = edgeObjects.find(edge.get());
+        if (objectIt != edgeObjects.end()) {
+            objectIt->second->setPosition(edge->getStart());
+        }
 
         auto edgeShapeIt = edgeShapes.find(edge.get());
         if (edgeShapeIt != edgeShapes.end()) {
