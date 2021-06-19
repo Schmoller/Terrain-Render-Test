@@ -37,7 +37,6 @@ private:
 
     // Debug visual output
     std::unordered_map<const Node *, std::shared_ptr<Vector::Circle>> nodeShapes;
-    std::unordered_map<const Edge *, std::shared_ptr<Vector::Object>> edgeShapes;
 
     void addEdgeGraphics(const std::shared_ptr<Edge> &);
 };

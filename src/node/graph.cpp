@@ -1,8 +1,6 @@
 #include "graph.hpp"
 #include "edge.hpp"
 #include "node.hpp"
-#include "../vector/bezier_curve.hpp"
-#include "../vector/line.hpp"
 #include "../theme.hpp"
 
 namespace Nodes {
@@ -80,12 +78,6 @@ void Graph::unlink(const std::shared_ptr<Edge> &edge) {
         removeNode(end);
     }
 
-    auto it = edgeShapes.find(edge.get());
-    if (it != edgeShapes.end()) {
-        graphics.removeObject(it->second);
-        edgeShapes.erase(it);
-    }
-
     auto objectIt = edgeObjects.find(edge.get());
     if (objectIt != edgeObjects.end()) {
         display.remove(objectIt->second);
@@ -94,22 +86,6 @@ void Graph::unlink(const std::shared_ptr<Edge> &edge) {
 }
 
 void Graph::addEdgeGraphics(const std::shared_ptr<Edge> &edge) {
-    std::shared_ptr<Vector::Object> shape;
-
-    if (edge->isStraight()) {
-        shape = graphics.addObject<Vector::Line>(edge->getStart(), edge->getEnd(), edge->getWidth());
-    } else {
-        shape = graphics.addObject<Vector::BezierCurve>(
-            edge->getStart(), *edge->getMidpoint(), edge->getEnd(), edge->getWidth());
-    }
-
-    shape->setFill({ 0.2, 0.2, 0.2, 0.2 });
-    shape->setStroke({ 0.6, 0.6, 0.6, 0.2 });
-    shape->setStrokePosition(Vector::StrokePosition::Center);
-    shape->setStrokeWidth(1);
-
-    edgeShapes.emplace(edge.get(), shape);
-
     auto object = display.createForEdge(edge);
     if (object) {
         edgeObjects.emplace(edge.get(), object);
@@ -153,23 +129,6 @@ void Graph::invalidateNode(const Node *node) {
         auto objectIt = edgeObjects.find(edge.get());
         if (objectIt != edgeObjects.end()) {
             objectIt->second->setPosition(edge->getStart());
-        }
-
-        auto edgeShapeIt = edgeShapes.find(edge.get());
-        if (edgeShapeIt != edgeShapes.end()) {
-            auto shape = edgeShapeIt->second;
-            if (edge->isStraight()) {
-                auto line = std::static_pointer_cast<Vector::Line>(shape);
-                line->setStart(edge->getStart());
-                line->setEnd(edge->getEnd());
-                line->setSize(edge->getWidth());
-            } else {
-                auto curve = std::static_pointer_cast<Vector::BezierCurve>(shape);
-                curve->setStart(edge->getStart());
-                curve->setEnd(edge->getEnd());
-                curve->setMid(*edge->getMidpoint());
-                curve->setLineWidth(edge->getWidth());
-            }
         }
     }
 }
