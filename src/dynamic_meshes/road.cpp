@@ -6,6 +6,17 @@
 
 uint32_t RoadMesh::nextIndex = 0;
 
+struct ConstructionVertex {
+    Engine::Vertex v;
+    float offset;
+};
+
+struct Triangle {
+    uint32_t i1;
+    uint32_t i2;
+    uint32_t i3;
+};
+
 RoadMesh::RoadMesh(Engine::RenderEngine &engine, Engine::Model &templateModel, std::shared_ptr<Nodes::Edge> edge)
     : engine(engine), templateMesh(templateModel), edge(std::move(edge)) {
 
@@ -27,8 +38,8 @@ void RoadMesh::invalidate() {
 }
 
 void RoadMesh::generate() {
-    std::vector<Engine::Vertex> vertices;
-    std::vector<uint32_t> indices;
+    std::vector<ConstructionVertex> vertices;
+    std::vector<Triangle> triangles;
 
     auto length = edge->getLength();
 
@@ -56,11 +67,12 @@ void RoadMesh::generate() {
             std::vector<uint32_t> subModelIndices;
 
             templateMesh.getMeshData(subModel, subModelVertices, subModelIndices);
+            uint32_t triangleCount = subModelIndices.size() / 3;
 
-            auto startVertex = vertices.size();
-            auto startIndex = indices.size();
+            uint32_t startVertex = vertices.size();
+            uint32_t startIndex = triangles.size();
             vertices.resize(vertices.size() + subModelVertices.size());
-            indices.resize(indices.size() + subModelIndices.size());
+            triangles.resize(triangles.size() + triangleCount);
 
             for (auto i = 0; i < subModelVertices.size(); ++i) {
                 auto vertex = subModelVertices[i];
@@ -73,11 +85,18 @@ void RoadMesh::generate() {
 
                 vertex.pos = origin + (biTangent * vertex.pos.x) + (normal * vertex.pos.z);
 
-                vertices[startVertex + i] = vertex;
+                vertices[startVertex + i] = {
+                    vertex,
+                    y
+                };
             }
 
-            for (auto i = 0; i < subModelIndices.size(); ++i) {
-                indices[startIndex + i] = subModelIndices[i] + startVertex;
+            for (auto i = 0; i < triangleCount; ++i) {
+                triangles[startIndex + i] = {
+                    subModelIndices[i * 3 + 0] + startVertex,
+                    subModelIndices[i * 3 + 1] + startVertex,
+                    subModelIndices[i * 3 + 2] + startVertex,
+                };
             }
         }
     }
@@ -100,9 +119,24 @@ void RoadMesh::generate() {
             .withMaximumVertexCapacity(1000000)
             .withMaximumIndexCapacity(1000000)
             .withInitialVertexCapacity(vertices.size())
-            .withInitialIndexCapacity(indices.size())
+            .withInitialIndexCapacity(triangles.size())
             .build();
     }
 
-    mesh->replaceAll(vertices, indices);
+    std::vector<Engine::Vertex> finalVertices(vertices.size());
+    std::vector<uint32_t> finalIndices(triangles.size() * 3);
+
+    for (uint32_t index = 0; index < vertices.size(); ++index) {
+        finalVertices[index] = vertices[index].v;
+    }
+
+    for (uint32_t index = 0; index < triangles.size(); ++index) {
+        auto &triangle = triangles[index];
+
+        finalIndices[index * 3 + 0] = triangle.i1;
+        finalIndices[index * 3 + 1] = triangle.i2;
+        finalIndices[index * 3 + 2] = triangle.i3;
+    }
+
+    mesh->replaceAll(finalVertices, finalIndices);
 }
