@@ -4,12 +4,20 @@
 #include <tech-core/mesh.hpp>
 #include <tech-core/material.hpp>
 #include <tech-core/engine.hpp>
+#include <tech-core/texture/builder.hpp>
 
 RoadDisplayManager::RoadDisplayManager(Engine::RenderEngine &engine)
     : engine(engine), objectSystem(*engine.getSubsystem(Engine::Subsystem::ObjectSubsystem::ID)) {
 
-    roadMaterial = engine.createMaterial({ "road-test", "gray", "", "", true });
-    roadModel.load("assets/models/roads/test.obj");
+    engine.createTexture("road-test")
+        .fromFile("assets/textures/RoadTest.png")
+        .withMipMode(Engine::MipType::Generate)
+        .build();
+
+    roadMaterial = engine.createMaterial({ "road-test", "road-test", "", "", true });
+    if (!roadModel.load("assets/models/roads/test2.obj")) {
+        throw std::runtime_error("Failed to load road model");
+    }
 
     roadMesh = engine.createStaticMesh<Engine::Vertex>("road-test")
         .fromModel(roadModel)
